@@ -1,0 +1,450 @@
+Systemd for Service Management
+Objectives
+By the end of this lab, you will be able to:
+
+Understand the fundamentals of systemd service management
+Control services using systemctl commands
+Create and configure custom systemd service units
+Monitor service logs using journalctl
+Troubleshoot service-related issues
+Implement service dependencies and configurations
+Prerequisites
+Before starting this lab, you should have:
+
+Basic knowledge of Linux command line operations
+Understanding of file permissions and ownership
+Familiarity with text editors (nano, vim, or gedit)
+Basic understanding of processes and services in Linux
+Knowledge of file system navigation
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Lab Environment Setup
+Your cloud machine comes with:
+
+Ubuntu 20.04 LTS or CentOS 8/Rocky Linux 8
+Systemd service manager (default)
+Root access for service management
+Pre-installed text editors and utilities
+Task 1: Control Services with systemctl
+Subtask 1.1: Understanding Systemd Basics
+First, let's explore the systemd environment and understand its structure.
+
+Step 1: Check systemd version and status
+
+systemctl --version
+Step 2: View system state
+
+systemctl status
+Step 3: List all available services
+
+systemctl list-units --type=service
+Step 4: List all service unit files
+
+systemctl list-unit-files --type=service
+Subtask 1.2: Basic Service Control Operations
+Step 1: Check the status of a common service (SSH)
+
+systemctl status ssh
+If SSH service is not available, use another common service:
+
+systemctl status cron
+Step 2: Stop a service
+
+sudo systemctl stop cron
+Step 3: Verify the service is stopped
+
+systemctl status cron
+Step 4: Start the service again
+
+sudo systemctl start cron
+Step 5: Restart a service
+
+sudo systemctl restart cron
+Step 6: Reload service configuration without stopping
+
+sudo systemctl reload cron
+Subtask 1.3: Service Enable/Disable Operations
+Step 1: Check if a service is enabled to start at boot
+
+systemctl is-enabled cron
+Step 2: Disable a service from starting at boot
+
+sudo systemctl disable cron
+Step 3: Verify the service is disabled
+
+systemctl is-enabled cron
+Step 4: Enable the service to start at boot
+
+sudo systemctl enable cron
+Step 5: Enable and start a service simultaneously
+
+sudo systemctl enable --now cron
+Subtask 1.4: Advanced Service Management
+Step 1: Mask a service (prevent it from being started)
+
+sudo systemctl mask cron
+Step 2: Try to start the masked service
+
+sudo systemctl start cron
+Step 3: Unmask the service
+
+sudo systemctl unmask cron
+Step 4: View service dependencies
+
+systemctl list-dependencies cron
+Task 2: Create Custom Systemd Service Units
+Subtask 2.1: Create a Simple Custom Service
+Step 1: Create a simple script that our service will run
+
+sudo mkdir -p /opt/myapp
+Step 2: Create the application script
+
+sudo nano /opt/myapp/myservice.sh
+Add the following content:
+
+#!/bin/bash
+# Simple service script
+LOG_FILE="/var/log/myservice.log"
+
+while true; do
+    echo "$(date): MyService is running - PID: $$" >> $LOG_FILE
+    sleep 30
+done
+Step 3: Make the script executable
+
+sudo chmod +x /opt/myapp/myservice.sh
+Step 4: Test the script manually
+
+sudo /opt/myapp/myservice.sh &
+Step 5: Stop the test process
+
+sudo pkill -f myservice.sh
+Subtask 2.2: Create the Systemd Service Unit File
+Step 1: Create the service unit file
+
+sudo nano /etc/systemd/system/myservice.service
+Step 2: Add the following service configuration
+
+[Unit]
+Description=My Custom Service
+Documentation=https://example.com/myservice
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/opt/myapp/myservice.sh
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+Step 3: Reload systemd to recognize the new service
+
+sudo systemctl daemon-reload
+Step 4: Check the service status
+
+systemctl status myservice
+Subtask 2.3: Test the Custom Service
+Step 1: Start the custom service
+
+sudo systemctl start myservice
+Step 2: Check service status
+
+systemctl status myservice
+Step 3: Enable the service for automatic startup
+
+sudo systemctl enable myservice
+Step 4: Verify the service is running and logging
+
+tail -f /var/log/myservice.log
+Press Ctrl+C to stop viewing the log.
+
+Subtask 2.4: Create an Advanced Service with Environment Variables
+Step 1: Create an advanced service script
+
+sudo nano /opt/myapp/advanced-service.sh
+Add the following content:
+
+#!/bin/bash
+# Advanced service script with environment variables
+
+LOG_FILE="${LOG_PATH:-/var/log/advanced-service.log}"
+SERVICE_NAME="${SERVICE_NAME:-AdvancedService}"
+INTERVAL="${SLEEP_INTERVAL:-15}"
+
+echo "Starting $SERVICE_NAME with interval $INTERVAL seconds" >> $LOG_FILE
+
+while true; do
+    echo "$(date): $SERVICE_NAME is active - Environment: $ENVIRONMENT" >> $LOG_FILE
+    sleep $INTERVAL
+done
+Step 2: Make the script executable
+
+sudo chmod +x /opt/myapp/advanced-service.sh
+Step 3: Create environment file
+
+sudo nano /etc/default/advanced-service
+Add the following content:
+
+# Environment variables for advanced-service
+SERVICE_NAME=ProductionService
+ENVIRONMENT=Production
+LOG_PATH=/var/log/advanced-service.log
+SLEEP_INTERVAL=20
+Step 4: Create the advanced service unit file
+
+sudo nano /etc/systemd/system/advanced-service.service
+Add the following configuration:
+
+[Unit]
+Description=Advanced Custom Service
+Documentation=https://example.com/advanced-service
+After=network.target multi-user.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/default/advanced-service
+ExecStart=/opt/myapp/advanced-service.sh
+ExecStop=/bin/kill -TERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+Step 5: Reload systemd and start the advanced service
+
+sudo systemctl daemon-reload
+sudo systemctl start advanced-service
+sudo systemctl enable advanced-service
+Step 6: Verify the advanced service
+
+systemctl status advanced-service
+tail /var/log/advanced-service.log
+Task 3: Use journalctl to Monitor Service Logs
+Subtask 3.1: Basic journalctl Operations
+Step 1: View all journal entries
+
+sudo journalctl
+Press q to quit the viewer.
+
+Step 2: View journal entries for a specific service
+
+sudo journalctl -u myservice
+Step 3: View journal entries in real-time (follow mode)
+
+sudo journalctl -u myservice -f
+Press Ctrl+C to stop following.
+
+Step 4: View journal entries for the current boot
+
+sudo journalctl -b
+Step 5: View journal entries for a specific time range
+
+sudo journalctl --since "1 hour ago"
+Subtask 3.2: Advanced journalctl Filtering
+Step 1: View logs with specific priority levels
+
+sudo journalctl -p err
+Step 2: View logs for multiple services
+
+sudo journalctl -u myservice -u advanced-service
+Step 3: View logs in JSON format
+
+sudo journalctl -u myservice -o json-pretty
+Step 4: View logs with timestamps
+
+sudo journalctl -u myservice --since "10 minutes ago" --until "5 minutes ago"
+Step 5: View kernel messages
+
+sudo journalctl -k
+Subtask 3.3: Service-Specific Log Analysis
+Step 1: Check service startup logs
+
+sudo journalctl -u myservice --since "today" | grep -i start
+Step 2: Monitor service failures
+
+sudo journalctl -u myservice -p err --since "today"
+Step 3: View service logs with line numbers
+
+sudo journalctl -u myservice -n 50
+Step 4: Export logs to a file
+
+sudo journalctl -u myservice --since "1 hour ago" > /tmp/myservice-logs.txt
+Step 5: View the exported logs
+
+cat /tmp/myservice-logs.txt
+Subtask 3.4: Journal Configuration and Maintenance
+Step 1: Check journal disk usage
+
+sudo journalctl --disk-usage
+Step 2: View journal configuration
+
+sudo systemctl status systemd-journald
+Step 3: Rotate journal files
+
+sudo systemctl kill --kill-who=main --signal=SIGUSR2 systemd-journald
+Step 4: Clean old journal entries
+
+sudo journalctl --vacuum-time=7d
+Step 5: Verify journal integrity
+
+sudo journalctl --verify
+Practical Exercise: Service Troubleshooting
+Exercise 1: Troubleshoot a Failing Service
+Step 1: Create a problematic service script
+
+sudo nano /opt/myapp/problem-service.sh
+Add the following content:
+
+#!/bin/bash
+# Problematic service script
+echo "Starting problematic service"
+sleep 5
+exit 1  # This will cause the service to fail
+Step 2: Make it executable
+
+sudo chmod +x /opt/myapp/problem-service.sh
+Step 3: Create service unit file
+
+sudo nano /etc/systemd/system/problem-service.service
+Add the following content:
+
+[Unit]
+Description=Problem Service for Troubleshooting
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/myapp/problem-service.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+Step 4: Reload and start the service
+
+sudo systemctl daemon-reload
+sudo systemctl start problem-service
+Step 5: Check service status
+
+systemctl status problem-service
+Step 6: Analyze the failure using journalctl
+
+sudo journalctl -u problem-service -n 20
+Step 7: Fix the service by modifying the script
+
+sudo nano /opt/myapp/problem-service.sh
+Change the content to:
+
+#!/bin/bash
+# Fixed service script
+LOG_FILE="/var/log/problem-service.log"
+
+echo "$(date): Problem service started successfully" >> $LOG_FILE
+
+while true; do
+    echo "$(date): Service running normally" >> $LOG_FILE
+    sleep 60
+done
+Step 8: Restart the service and verify it works
+
+sudo systemctl restart problem-service
+systemctl status problem-service
+tail /var/log/problem-service.log
+Service Management Best Practices
+Security Considerations
+Step 1: Create a dedicated user for services
+
+sudo useradd -r -s /bin/false myservice-user
+Step 2: Update service to run as non-root user
+
+sudo nano /etc/systemd/system/myservice.service
+Modify the [Service] section:
+
+[Service]
+Type=simple
+User=myservice-user
+Group=myservice-user
+ExecStart=/opt/myapp/myservice.sh
+Step 3: Adjust file permissions
+
+sudo chown myservice-user:myservice-user /opt/myapp/myservice.sh
+sudo touch /var/log/myservice.log
+sudo chown myservice-user:myservice-user /var/log/myservice.log
+Step 4: Reload and restart the service
+
+sudo systemctl daemon-reload
+sudo systemctl restart myservice
+systemctl status myservice
+Verification and Testing
+Final Verification Steps
+Step 1: List all custom services created
+
+systemctl list-unit-files | grep -E "(myservice|advanced-service|problem-service)"
+Step 2: Check status of all custom services
+
+systemctl status myservice advanced-service problem-service
+Step 3: Verify services start automatically after reboot simulation
+
+sudo systemctl reboot
+After the system restarts, check:
+
+systemctl status myservice advanced-service
+Step 4: Clean up test services (optional)
+
+sudo systemctl stop myservice advanced-service problem-service
+sudo systemctl disable myservice advanced-service problem-service
+sudo rm /etc/systemd/system/myservice.service
+sudo rm /etc/systemd/system/advanced-service.service
+sudo rm /etc/systemd/system/problem-service.service
+sudo systemctl daemon-reload
+Troubleshooting Common Issues
+Issue 1: Service Fails to Start
+Symptoms: Service shows "failed" status Solution:
+
+Check service logs: sudo journalctl -u servicename
+Verify script permissions: ls -la /path/to/script
+Test script manually: sudo /path/to/script
+Issue 2: Service Starts but Stops Immediately
+Symptoms: Service shows "inactive (dead)" status Solution:
+
+Check if script runs in foreground
+Verify Type=simple is appropriate
+Add debugging to script
+Issue 3: Permission Denied Errors
+Symptoms: Permission errors in journal logs Solution:
+
+Check file ownership: ls -la /path/to/files
+Verify user exists: id username
+Adjust permissions: sudo chown user:group /path/to/files
+Conclusion
+In this lab, you have successfully learned to manage services using systemd, which is the standard service management system for modern Linux distributions. You accomplished the following key tasks:
+
+Service Control Mastery: You learned to use systemctl commands to start, stop, restart, enable, disable, and mask services. These skills are essential for day-to-day Linux system administration.
+
+Custom Service Creation: You created custom systemd service units from scratch, including both simple and advanced configurations with environment variables. This knowledge enables you to deploy and manage custom applications as system services.
+
+Log Monitoring Expertise: You mastered journalctl for monitoring service logs, filtering entries, and troubleshooting service issues. This is crucial for maintaining system health and diagnosing problems.
+
+Security Implementation: You implemented security best practices by creating dedicated service users and applying proper file permissions, which is essential for production environments.
+
+Troubleshooting Skills: You developed practical troubleshooting skills by intentionally creating and fixing service problems, preparing you for real-world scenarios.
+
+These systemd skills are fundamental for Linux system administrators and are directly applicable to managing production servers, containerized environments, and cloud infrastructure. The ability to create, manage, and troubleshoot services using systemd is a core competency for the Al Razzaq Linux Security & Administration Specialist certification and professional Linux administration roles.
+
+Understanding systemd service management is particularly important in modern DevOps environments where applications need to be deployed as reliable, automatically-starting services with proper logging and monitoring capabilities.
