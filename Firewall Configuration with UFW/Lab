@@ -1,0 +1,374 @@
+Firewall Configuration with UFW
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamentals of firewall security and UFW architecture
+Install and enable UFW (Uncomplicated Firewall) on a Linux system
+Configure basic firewall rules to allow and deny network traffic
+Create custom firewall policies for specific applications and services
+Implement advanced UFW rules including port ranges and IP-based restrictions
+Enable and configure UFW logging for security monitoring
+Troubleshoot firewall issues using UFW logs and status commands
+Apply best practices for firewall security in production environments
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of Linux command line operations
+Familiarity with network concepts (ports, protocols, IP addresses)
+Knowledge of common network services (SSH, HTTP, HTTPS, FTP)
+Understanding of file permissions and system administration basics
+Access to a Linux terminal with sudo privileges
+Lab Environment
+Ready-to-Use Cloud Machines: Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or set up additional infrastructure.
+
+Your lab environment includes:
+
+Ubuntu Linux system with sudo access
+UFW firewall package (pre-installed on most Ubuntu systems)
+Network utilities for testing connectivity
+Log viewing tools for troubleshooting
+Task 1: Set Up Basic Firewall Rules with UFW
+Subtask 1.1: Install and Check UFW Status
+First, let's verify that UFW is installed and check its current status.
+
+Step 1: Check if UFW is installed on your system:
+
+sudo ufw --version
+Step 2: If UFW is not installed, install it using the package manager:
+
+sudo apt update
+sudo apt install ufw -y
+Step 3: Check the current status of UFW:
+
+sudo ufw status
+You should see output indicating that UFW is inactive (disabled by default).
+
+Step 4: View the current UFW rules in verbose mode:
+
+sudo ufw status verbose
+Subtask 1.2: Enable UFW and Configure Default Policies
+Step 1: Before enabling UFW, set up default policies to ensure you don't lock yourself out:
+
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+Step 2: Allow SSH connections to prevent being locked out of your system:
+
+sudo ufw allow ssh
+Step 3: Enable UFW firewall:
+
+sudo ufw enable
+Type y when prompted to proceed with the operation.
+
+Step 4: Verify that UFW is now active:
+
+sudo ufw status
+You should see that UFW is active with SSH allowed.
+
+Subtask 1.3: Configure Basic Service Rules
+Step 1: Allow HTTP traffic (port 80):
+
+sudo ufw allow http
+Step 2: Allow HTTPS traffic (port 443):
+
+sudo ufw allow https
+Step 3: Allow FTP traffic (port 21):
+
+sudo ufw allow ftp
+Step 4: View all current rules:
+
+sudo ufw status numbered
+Step 5: Allow a specific port (example: port 8080):
+
+sudo ufw allow 8080
+Step 6: Allow a port with specific protocol:
+
+sudo ufw allow 3306/tcp
+Subtask 1.4: Test Basic Deny Rules
+Step 1: Deny access to a specific port (example: port 23 for Telnet):
+
+sudo ufw deny 23
+Step 2: Deny access to a specific service:
+
+sudo ufw deny smtp
+Step 3: Check the updated rules:
+
+sudo ufw status verbose
+Task 2: Create Custom Firewall Policies
+Subtask 2.1: IP Address-Based Rules
+Step 1: Allow connections from a specific IP address:
+
+sudo ufw allow from 192.168.1.100
+Step 2: Allow connections from a specific IP address to a specific port:
+
+sudo ufw allow from 192.168.1.100 to any port 22
+Step 3: Allow connections from a subnet:
+
+sudo ufw allow from 192.168.1.0/24
+Step 4: Deny connections from a specific IP address:
+
+sudo ufw deny from 203.0.113.100
+Step 5: Allow connections from a specific IP to a specific service:
+
+sudo ufw allow from 10.0.0.50 to any port 80
+Subtask 2.2: Port Range Rules
+Step 1: Allow a range of ports:
+
+sudo ufw allow 6000:6010/tcp
+Step 2: Allow UDP traffic on a port range:
+
+sudo ufw allow 60000:61000/udp
+Step 3: Deny a range of ports:
+
+sudo ufw deny 135:139/tcp
+Subtask 2.3: Interface-Specific Rules
+Step 1: Check available network interfaces:
+
+ip addr show
+Step 2: Allow traffic on a specific interface (replace eth0 with your interface name):
+
+sudo ufw allow in on eth0 to any port 80
+Step 3: Allow traffic from a specific interface to a specific destination:
+
+sudo ufw allow in on lo to any port 3306
+Subtask 2.4: Application-Specific Rules
+Step 1: List available application profiles:
+
+sudo ufw app list
+Step 2: Get information about a specific application profile:
+
+sudo ufw app info 'Apache Full'
+Step 3: Allow an application profile:
+
+sudo ufw allow 'Apache Full'
+Step 4: Create a custom application profile. First, create a profile file:
+
+sudo nano /etc/ufw/applications.d/myapp
+Add the following content:
+
+[MyWebApp]
+title=My Custom Web Application
+description=Custom web application on port 8080
+ports=8080/tcp
+Step 5: Reload UFW application profiles:
+
+sudo ufw app update MyWebApp
+Step 6: Allow the custom application:
+
+sudo ufw allow MyWebApp
+Task 3: Use UFW for Logging and Troubleshooting
+Subtask 3.1: Enable and Configure UFW Logging
+Step 1: Enable UFW logging:
+
+sudo ufw logging on
+Step 2: Set logging level to medium for more detailed logs:
+
+sudo ufw logging medium
+Step 3: Check available logging levels:
+
+sudo ufw logging --help
+Step 4: Set logging to high level for maximum detail:
+
+sudo ufw logging high
+Subtask 3.2: View and Analyze UFW Logs
+Step 1: View UFW logs using journalctl:
+
+sudo journalctl -u ufw
+Step 2: View recent UFW log entries:
+
+sudo journalctl -u ufw -n 20
+Step 3: Follow UFW logs in real-time:
+
+sudo journalctl -u ufw -f
+Step 4: View UFW logs from system log files:
+
+sudo grep UFW /var/log/syslog
+Step 5: View only blocked connections:
+
+sudo grep "UFW BLOCK" /var/log/syslog
+Subtask 3.3: Generate Test Traffic for Log Analysis
+Step 1: Open a second terminal window and attempt to connect to a blocked port:
+
+telnet localhost 23
+Step 2: In your main terminal, check the logs for the blocked connection:
+
+sudo grep "UFW BLOCK" /var/log/syslog | tail -5
+Step 3: Test an allowed connection:
+
+curl -I http://localhost
+Step 4: Check logs for allowed connections:
+
+sudo grep "UFW ALLOW" /var/log/syslog | tail -5
+Subtask 3.4: UFW Status and Rule Management
+Step 1: Display detailed UFW status:
+
+sudo ufw status verbose
+Step 2: Show numbered rules for easy management:
+
+sudo ufw status numbered
+Step 3: Delete a specific rule by number (replace X with actual rule number):
+
+sudo ufw delete 5
+Step 4: Delete a rule by specification:
+
+sudo ufw delete allow 8080
+Step 5: Insert a rule at a specific position:
+
+sudo ufw insert 1 allow from 192.168.1.50
+Subtask 3.5: Advanced Troubleshooting Commands
+Step 1: Check UFW configuration files:
+
+sudo cat /etc/ufw/ufw.conf
+Step 2: View UFW rules in raw iptables format:
+
+sudo ufw show raw
+Step 3: Display UFW listening report:
+
+sudo ufw show listening
+Step 4: Show UFW added rules:
+
+sudo ufw show added
+Step 5: Reset UFW to default settings (use with caution):
+
+sudo ufw --force reset
+Subtask 3.6: Create a Comprehensive Firewall Policy Script
+Create a script to implement a complete firewall policy:
+
+Step 1: Create a new script file:
+
+nano ~/firewall_setup.sh
+Step 2: Add the following content to the script:
+
+#!/bin/bash
+
+# UFW Firewall Configuration Script
+echo "Starting UFW Firewall Configuration..."
+
+# Reset UFW to clean state
+sudo ufw --force reset
+
+# Set default policies
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow essential services
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+
+# Allow specific applications
+sudo ufw allow 'Apache Full'
+
+# Allow database access from local network only
+sudo ufw allow from 192.168.1.0/24 to any port 3306
+
+# Allow custom application port
+sudo ufw allow 8080/tcp
+
+# Deny dangerous services
+sudo ufw deny telnet
+sudo ufw deny ftp
+
+# Allow ping (ICMP)
+sudo ufw allow in on any to any port 22
+sudo ufw allow out on any from any to any port 22
+
+# Enable logging
+sudo ufw logging medium
+
+# Enable UFW
+sudo ufw enable
+
+# Display final status
+echo "UFW Configuration Complete!"
+sudo ufw status verbose
+
+echo "Firewall setup completed successfully!"
+Step 3: Make the script executable:
+
+chmod +x ~/firewall_setup.sh
+Step 4: Run the script:
+
+./firewall_setup.sh
+Subtask 3.7: Monitor and Analyze Firewall Performance
+Step 1: Create a log monitoring script:
+
+nano ~/ufw_monitor.sh
+Step 2: Add the following content:
+
+#!/bin/bash
+
+echo "UFW Firewall Monitoring Report"
+echo "=============================="
+echo
+
+echo "Current UFW Status:"
+sudo ufw status verbose
+echo
+
+echo "Recent Blocked Connections (Last 10):"
+sudo grep "UFW BLOCK" /var/log/syslog | tail -10
+echo
+
+echo "Recent Allowed Connections (Last 5):"
+sudo grep "UFW ALLOW" /var/log/syslog | tail -5
+echo
+
+echo "Top Blocked IP Addresses:"
+sudo grep "UFW BLOCK" /var/log/syslog | awk '{print $13}' | sort | uniq -c | sort -nr | head -5
+echo
+
+echo "Monitoring complete!"
+Step 3: Make the monitoring script executable:
+
+chmod +x ~/ufw_monitor.sh
+Step 4: Run the monitoring script:
+
+./ufw_monitor.sh
+Troubleshooting Tips
+Common Issues and Solutions
+Issue 1: Locked out of SSH after enabling UFW
+
+Solution: If you have physical access, disable UFW with sudo ufw disable and reconfigure
+Issue 2: Rules not working as expected
+
+Solution: Check rule order with sudo ufw status numbered - rules are processed in order
+Issue 3: Application profiles not found
+
+Solution: Update application database with sudo ufw app update --add-new
+Issue 4: Logs not showing expected entries
+
+Solution: Increase logging level with sudo ufw logging high
+Issue 5: Cannot delete rules
+
+Solution: Use numbered deletion sudo ufw delete [number] or exact rule specification
+Best Practices
+Always allow SSH before enabling UFW
+Test rules thoroughly before implementing in production
+Use specific IP ranges instead of allowing all traffic when possible
+Regularly review and audit firewall rules
+Monitor logs for suspicious activity
+Keep UFW rules organized and well-documented
+Use application profiles when available
+Implement defense in depth with multiple security layers
+Conclusion
+In this comprehensive lab, you have successfully learned how to configure and manage the UFW (Uncomplicated Firewall) on a Linux system. You accomplished several critical security tasks:
+
+Key Achievements:
+
+Basic Firewall Setup: You installed UFW, configured default policies, and established fundamental rules to protect your system while maintaining necessary connectivity.
+
+Custom Policy Creation: You created sophisticated firewall rules including IP-based restrictions, port ranges, interface-specific rules, and custom application profiles.
+
+Logging and Troubleshooting: You enabled comprehensive logging, learned to analyze firewall logs, and developed monitoring scripts to track firewall activity and performance.
+
+Why This Matters:
+
+Firewall configuration is a fundamental aspect of system security that protects your Linux systems from unauthorized network access. UFW provides an accessible interface to the powerful iptables firewall system, making it easier to implement robust security policies. The skills you've developed in this lab are essential for:
+
+System Administration: Protecting servers and workstations from network-based attacks
+Security Compliance: Meeting organizational and regulatory security requirements
+Incident Response: Quickly implementing security measures during security incidents
+Network Segmentation: Controlling traffic flow between different network segments
+The hands-on experience with UFW logging and troubleshooting prepares you to maintain and optimize firewall configurations in production environments. These skills are directly applicable to roles in system administration, cybersecurity, and DevOps, making you more valuable in the job market and better prepared for Linux security certifications.
+
+By mastering UFW configuration, you've taken a significant step toward becoming proficient in Linux security administration and are well-prepared to implement comprehensive network security solutions in real-world scenarios
