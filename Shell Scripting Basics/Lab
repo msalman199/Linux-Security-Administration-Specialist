@@ -1,0 +1,842 @@
+Shell Scripting Basics
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamental concepts of shell scripting in Linux
+Create and execute basic shell scripts with proper syntax
+Implement variables and conditional statements in shell scripts
+Utilize different types of loops (for and while) effectively
+Develop scripts to automate repetitive system administration tasks
+Apply best practices for shell script development and debugging
+Demonstrate proficiency in shell scripting for Linux system automation
+Prerequisites
+Before starting this lab, students should have:
+
+Basic knowledge of Linux command-line interface
+Understanding of file system navigation and basic file operations
+Familiarity with text editors (nano, vim, or gedit)
+Knowledge of basic Linux commands (ls, cd, mkdir, chmod, etc.)
+Understanding of file permissions in Linux
+Basic understanding of input/output redirection
+Lab Environment
+Ready-to-Use Cloud Machines: Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Your cloud machine includes:
+
+Ubuntu Linux distribution
+Pre-installed text editors (nano, vim, gedit)
+Bash shell environment
+All necessary system utilities
+Task 1: Create a Simple Shell Script with Variables and Conditions
+Subtask 1.1: Understanding Shell Script Basics
+First, let's understand what makes a file a shell script and create your first basic script.
+
+Open a terminal in your Linux environment
+
+Create a new directory for your shell scripts:
+
+mkdir ~/shell_scripts
+cd ~/shell_scripts
+Create your first shell script file:
+nano hello_world.sh
+Enter the following code in the editor:
+#!/bin/bash
+# This is my first shell script
+# Author: Your Name
+# Date: Today's Date
+
+echo "Hello, World!"
+echo "Welcome to Shell Scripting!"
+Save and exit the editor (Ctrl+X, then Y, then Enter in nano)
+
+Make the script executable:
+
+chmod +x hello_world.sh
+Execute the script:
+./hello_world.sh
+Expected Output:
+
+Hello, World!
+Welcome to Shell Scripting!
+Subtask 1.2: Working with Variables
+Now let's create a script that demonstrates variable usage.
+
+Create a new script for variables:
+nano variables_demo.sh
+Enter the following code:
+#!/bin/bash
+# Variables demonstration script
+
+# Define variables
+NAME="John Doe"
+AGE=25
+CURRENT_DATE=$(date)
+CURRENT_USER=$(whoami)
+HOME_DIR=$HOME
+
+# Display variables
+echo "=== Personal Information ==="
+echo "Name: $NAME"
+echo "Age: $AGE"
+echo "Current User: $CURRENT_USER"
+echo "Home Directory: $HOME_DIR"
+echo "Current Date: $CURRENT_DATE"
+
+# Read input from user
+echo ""
+echo "Please enter your favorite color:"
+read FAVORITE_COLOR
+echo "Your favorite color is: $FAVORITE_COLOR"
+Make it executable and run:
+chmod +x variables_demo.sh
+./variables_demo.sh
+When prompted, enter a color name and observe the output.
+Subtask 1.3: Implementing Conditional Statements
+Create a script that uses if-else conditions to make decisions.
+
+Create a new script for conditions:
+nano conditions_demo.sh
+Enter the following code:
+#!/bin/bash
+# Conditional statements demonstration
+
+echo "=== File and Directory Checker ==="
+echo "Enter a file or directory path:"
+read PATH_INPUT
+
+# Check if the path exists
+if [ -e "$PATH_INPUT" ]; then
+    echo "Path exists!"
+    
+    # Check if it's a file or directory
+    if [ -f "$PATH_INPUT" ]; then
+        echo "It's a regular file."
+        FILE_SIZE=$(stat -c%s "$PATH_INPUT")
+        echo "File size: $FILE_SIZE bytes"
+        
+        # Check if file is readable
+        if [ -r "$PATH_INPUT" ]; then
+            echo "File is readable."
+        else
+            echo "File is not readable."
+        fi
+        
+    elif [ -d "$PATH_INPUT" ]; then
+        echo "It's a directory."
+        FILE_COUNT=$(ls -1 "$PATH_INPUT" | wc -l)
+        echo "Number of items in directory: $FILE_COUNT"
+    fi
+    
+else
+    echo "Path does not exist!"
+    echo "Would you like to create it? (y/n)"
+    read CREATE_CHOICE
+    
+    if [ "$CREATE_CHOICE" = "y" ] || [ "$CREATE_CHOICE" = "Y" ]; then
+        echo "Creating directory..."
+        mkdir -p "$PATH_INPUT"
+        echo "Directory created successfully!"
+    else
+        echo "No action taken."
+    fi
+fi
+Make it executable and test:
+chmod +x conditions_demo.sh
+./conditions_demo.sh
+Test with different inputs:
+An existing file (e.g., /etc/passwd)
+An existing directory (e.g., /home)
+A non-existent path
+Subtask 1.4: Advanced Conditional Logic
+Create a script that demonstrates multiple conditions and logical operators.
+
+Create a number comparison script:
+nano number_checker.sh
+Enter the following code:
+#!/bin/bash
+# Advanced conditional logic demonstration
+
+echo "=== Number Analysis Tool ==="
+echo "Enter a number:"
+read NUMBER
+
+# Validate input is a number
+if ! [[ "$NUMBER" =~ ^-?[0-9]+$ ]]; then
+    echo "Error: Please enter a valid integer!"
+    exit 1
+fi
+
+echo "Analyzing number: $NUMBER"
+
+# Multiple conditions
+if [ "$NUMBER" -gt 0 ]; then
+    echo "Number is positive"
+elif [ "$NUMBER" -lt 0 ]; then
+    echo "Number is negative"
+else
+    echo "Number is zero"
+fi
+
+# Check if even or odd
+if [ $((NUMBER % 2)) -eq 0 ]; then
+    echo "Number is even"
+else
+    echo "Number is odd"
+fi
+
+# Range checking
+if [ "$NUMBER" -ge 1 ] && [ "$NUMBER" -le 10 ]; then
+    echo "Number is between 1 and 10 (inclusive)"
+elif [ "$NUMBER" -ge 11 ] && [ "$NUMBER" -le 100 ]; then
+    echo "Number is between 11 and 100 (inclusive)"
+else
+    echo "Number is outside the range 1-100"
+fi
+
+# Multiple condition example
+if [ "$NUMBER" -gt 0 ] && [ $((NUMBER % 5)) -eq 0 ]; then
+    echo "Number is positive and divisible by 5"
+fi
+Make executable and test:
+chmod +x number_checker.sh
+./number_checker.sh
+Task 2: Use Loops (for and while) in Scripts
+Subtask 2.1: For Loop Basics
+Create scripts that demonstrate different types of for loops.
+
+Create a basic for loop script:
+nano for_loop_demo.sh
+Enter the following code:
+#!/bin/bash
+# For loop demonstrations
+
+echo "=== Basic For Loop Examples ==="
+
+# Example 1: Loop through a range of numbers
+echo "Counting from 1 to 5:"
+for i in {1..5}; do
+    echo "Count: $i"
+done
+
+echo ""
+
+# Example 2: Loop through a list of items
+echo "Favorite programming languages:"
+for language in "Python" "Bash" "JavaScript" "Java" "C++"; do
+    echo "- $language"
+done
+
+echo ""
+
+# Example 3: Loop through files in current directory
+echo "Files in current directory:"
+for file in *.sh; do
+    if [ -f "$file" ]; then
+        echo "Script file: $file"
+    fi
+done
+
+echo ""
+
+# Example 4: C-style for loop
+echo "Even numbers from 2 to 10:"
+for ((i=2; i<=10; i+=2)); do
+    echo "Even number: $i"
+done
+Make executable and run:
+chmod +x for_loop_demo.sh
+./for_loop_demo.sh
+Subtask 2.2: While Loop Implementation
+Create a script demonstrating while loops.
+
+Create a while loop script:
+nano while_loop_demo.sh
+Enter the following code:
+#!/bin/bash
+# While loop demonstrations
+
+echo "=== While Loop Examples ==="
+
+# Example 1: Basic counter
+echo "Countdown from 5:"
+counter=5
+while [ $counter -gt 0 ]; do
+    echo "T-minus $counter"
+    counter=$((counter - 1))
+    sleep 1
+done
+echo "Blast off!"
+
+echo ""
+
+# Example 2: Reading file line by line
+echo "Creating a sample file..."
+cat > sample_data.txt << EOF
+Apple
+Banana
+Cherry
+Date
+Elderberry
+EOF
+
+echo "Reading file line by line:"
+while IFS= read -r line; do
+    echo "Fruit: $line"
+done < sample_data.txt
+
+echo ""
+
+# Example 3: Menu-driven loop
+echo "=== Simple Menu System ==="
+choice=""
+while [ "$choice" != "4" ]; do
+    echo "Please select an option:"
+    echo "1. Show current date"
+    echo "2. Show current user"
+    echo "3. Show current directory"
+    echo "4. Exit"
+    echo -n "Enter your choice (1-4): "
+    read choice
+    
+    case $choice in
+        1)
+            echo "Current date: $(date)"
+            ;;
+        2)
+            echo "Current user: $(whoami)"
+            ;;
+        3)
+            echo "Current directory: $(pwd)"
+            ;;
+        4)
+            echo "Goodbye!"
+            ;;
+        *)
+            echo "Invalid choice. Please try again."
+            ;;
+    esac
+    echo ""
+done
+Make executable and run:
+chmod +x while_loop_demo.sh
+./while_loop_demo.sh
+Subtask 2.3: Nested Loops and Advanced Patterns
+Create a script with nested loops for more complex operations.
+
+Create a nested loops script:
+nano nested_loops.sh
+Enter the following code:
+#!/bin/bash
+# Nested loops and pattern demonstrations
+
+echo "=== Nested Loop Examples ==="
+
+# Example 1: Multiplication table
+echo "Multiplication Table (1-5):"
+echo "   |  1  2  3  4  5"
+echo "---|---------------"
+for i in {1..5}; do
+    printf "%2d |" $i
+    for j in {1..5}; do
+        result=$((i * j))
+        printf "%3d" $result
+    done
+    echo ""
+done
+
+echo ""
+
+# Example 2: Pattern printing
+echo "Number Pattern:"
+for i in {1..5}; do
+    for j in $(seq 1 $i); do
+        echo -n "$j "
+    done
+    echo ""
+done
+
+echo ""
+
+# Example 3: File processing with nested loops
+echo "Creating test directories and files..."
+for dir in "docs" "images" "scripts"; do
+    mkdir -p "test_$dir"
+    for file in "file1" "file2" "file3"; do
+        touch "test_$dir/${file}.txt"
+        echo "Sample content for $file" > "test_$dir/${file}.txt"
+    done
+done
+
+echo "Directory structure created:"
+for dir in test_*; do
+    if [ -d "$dir" ]; then
+        echo "Directory: $dir"
+        for file in "$dir"/*; do
+            if [ -f "$file" ]; then
+                echo "  File: $(basename "$file")"
+            fi
+        done
+    fi
+done
+Make executable and run:
+chmod +x nested_loops.sh
+./nested_loops.sh
+Task 3: Automate Repetitive Tasks with Shell Scripts
+Subtask 3.1: System Information Gathering Script
+Create a script that automates the collection of system information.
+
+Create a system info script:
+nano system_info.sh
+Enter the following code:
+#!/bin/bash
+# System Information Gathering Script
+
+REPORT_FILE="system_report_$(date +%Y%m%d_%H%M%S).txt"
+
+echo "=== System Information Report Generator ==="
+echo "Generating report: $REPORT_FILE"
+
+# Function to add section headers
+add_section() {
+    echo "" >> "$REPORT_FILE"
+    echo "================================" >> "$REPORT_FILE"
+    echo "$1" >> "$REPORT_FILE"
+    echo "================================" >> "$REPORT_FILE"
+}
+
+# Start report
+echo "System Information Report" > "$REPORT_FILE"
+echo "Generated on: $(date)" >> "$REPORT_FILE"
+
+# System Overview
+add_section "SYSTEM OVERVIEW"
+echo "Hostname: $(hostname)" >> "$REPORT_FILE"
+echo "Operating System: $(lsb_release -d | cut -f2)" >> "$REPORT_FILE"
+echo "Kernel Version: $(uname -r)" >> "$REPORT_FILE"
+echo "Architecture: $(uname -m)" >> "$REPORT_FILE"
+echo "Uptime: $(uptime -p)" >> "$REPORT_FILE"
+
+# CPU Information
+add_section "CPU INFORMATION"
+echo "CPU Model: $(lscpu | grep 'Model name' | cut -d':' -f2 | xargs)" >> "$REPORT_FILE"
+echo "CPU Cores: $(nproc)" >> "$REPORT_FILE"
+echo "CPU Usage:" >> "$REPORT_FILE"
+top -bn1 | grep "Cpu(s)" >> "$REPORT_FILE"
+
+# Memory Information
+add_section "MEMORY INFORMATION"
+free -h >> "$REPORT_FILE"
+
+# Disk Usage
+add_section "DISK USAGE"
+df -h >> "$REPORT_FILE"
+
+# Network Information
+add_section "NETWORK INFORMATION"
+echo "Network Interfaces:" >> "$REPORT_FILE"
+ip addr show | grep -E "^[0-9]+:|inet " >> "$REPORT_FILE"
+
+# Running Processes
+add_section "TOP PROCESSES (by CPU)"
+ps aux --sort=-%cpu | head -10 >> "$REPORT_FILE"
+
+# User Information
+add_section "USER INFORMATION"
+echo "Current User: $(whoami)" >> "$REPORT_FILE"
+echo "Logged in Users:" >> "$REPORT_FILE"
+who >> "$REPORT_FILE"
+
+echo "Report generated successfully: $REPORT_FILE"
+echo "Use 'cat $REPORT_FILE' to view the complete report"
+Make executable and run:
+chmod +x system_info.sh
+./system_info.sh
+View the generated report:
+ls -la system_report_*.txt
+cat system_report_*.txt
+Subtask 3.2: File Management Automation Script
+Create a script that automates file organization and cleanup tasks.
+
+Create a file management script:
+nano file_manager.sh
+Enter the following code:
+#!/bin/bash
+# File Management Automation Script
+
+WORK_DIR="$HOME/file_management_demo"
+LOG_FILE="$WORK_DIR/file_operations.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Create working directory
+mkdir -p "$WORK_DIR"
+cd "$WORK_DIR"
+
+echo "=== File Management Automation ==="
+log_message "Starting file management operations"
+
+# Create sample files for demonstration
+echo "Creating sample files..."
+mkdir -p {documents,images,archives,scripts,temp}
+
+# Create various file types
+for i in {1..5}; do
+    echo "This is document $i" > "document_$i.txt"
+    echo "This is a log entry $i" > "logfile_$i.log"
+    touch "image_$i.jpg"
+    touch "script_$i.sh"
+    touch "archive_$i.zip"
+done
+
+# Create some old files (simulate by changing timestamps)
+touch -d "30 days ago" old_file_1.txt
+touch -d "45 days ago" old_file_2.log
+touch -d "60 days ago" very_old_file.tmp
+
+log_message "Sample files created"
+
+# File organization function
+organize_files() {
+    log_message "Starting file organization"
+    
+    # Move files by extension
+    for file in *.txt; do
+        if [ -f "$file" ]; then
+            mv "$file" documents/
+            log_message "Moved $file to documents/"
+        fi
+    done
+    
+    for file in *.jpg *.png *.gif; do
+        if [ -f "$file" ]; then
+            mv "$file" images/
+            log_message "Moved $file to images/"
+        fi
+    done
+    
+    for file in *.sh; do
+        if [ -f "$file" ]; then
+            mv "$file" scripts/
+            log_message "Moved $file to scripts/"
+        fi
+    done
+    
+    for file in *.zip *.tar *.gz; do
+        if [ -f "$file" ]; then
+            mv "$file" archives/
+            log_message "Moved $file to archives/"
+        fi
+    done
+    
+    for file in *.log *.tmp; do
+        if [ -f "$file" ]; then
+            mv "$file" temp/
+            log_message "Moved $file to temp/"
+        fi
+    done
+}
+
+# Cleanup old files function
+cleanup_old_files() {
+    log_message "Starting cleanup of old files"
+    
+    # Find and remove files older than 30 days
+    find . -type f -mtime +30 -exec ls -la {} \; | while read -r line; do
+        log_message "Found old file: $line"
+    done
+    
+    # Remove old files (uncomment the next line to actually delete)
+    # find . -type f -mtime +30 -delete
+    
+    log_message "Old file cleanup completed (files listed but not deleted for safety)"
+}
+
+# Generate file report
+generate_report() {
+    log_message "Generating file report"
+    
+    REPORT_FILE="file_report_$(date +%Y%m%d_%H%M%S).txt"
+    
+    echo "File Management Report" > "$REPORT_FILE"
+    echo "Generated: $(date)" >> "$REPORT_FILE"
+    echo "Working Directory: $(pwd)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    
+    for dir in documents images archives scripts temp; do
+        echo "=== $dir Directory ===" >> "$REPORT_FILE"
+        if [ -d "$dir" ]; then
+            file_count=$(find "$dir" -type f | wc -l)
+            echo "File count: $file_count" >> "$REPORT_FILE"
+            echo "Files:" >> "$REPORT_FILE"
+            ls -la "$dir" >> "$REPORT_FILE"
+        else
+            echo "Directory not found" >> "$REPORT_FILE"
+        fi
+        echo "" >> "$REPORT_FILE"
+    done
+    
+    log_message "Report generated: $REPORT_FILE"
+}
+
+# Main execution
+echo "Current directory contents:"
+ls -la
+
+echo ""
+echo "Organizing files..."
+organize_files
+
+echo ""
+echo "Performing cleanup check..."
+cleanup_old_files
+
+echo ""
+echo "Generating report..."
+generate_report
+
+echo ""
+echo "Final directory structure:"
+tree . 2>/dev/null || find . -type d | sort
+
+log_message "File management operations completed"
+echo ""
+echo "Check the log file for detailed operations: $LOG_FILE"
+Make executable and run:
+chmod +x file_manager.sh
+./file_manager.sh
+Subtask 3.3: Backup Automation Script
+Create a script that automates backup operations.
+
+Create a backup script:
+nano backup_automation.sh
+Enter the following code:
+#!/bin/bash
+# Backup Automation Script
+
+# Configuration
+SOURCE_DIR="$HOME/shell_scripts"
+BACKUP_BASE_DIR="$HOME/backups"
+DATE_STAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="$BACKUP_BASE_DIR/backup_$DATE_STAMP"
+LOG_FILE="$BACKUP_BASE_DIR/backup.log"
+MAX_BACKUPS=5
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Function to create backup directory
+create_backup_dir() {
+    if [ ! -d "$BACKUP_BASE_DIR" ]; then
+        mkdir -p "$BACKUP_BASE_DIR"
+        log_message "Created backup base directory: $BACKUP_BASE_DIR"
+    fi
+    
+    mkdir -p "$BACKUP_DIR"
+    log_message "Created backup directory: $BACKUP_DIR"
+}
+
+# Function to perform backup
+perform_backup() {
+    log_message "Starting backup process"
+    log_message "Source: $SOURCE_DIR"
+    log_message "Destination: $BACKUP_DIR"
+    
+    if [ ! -d "$SOURCE_DIR" ]; then
+        log_message "ERROR: Source directory does not exist: $SOURCE_DIR"
+        return 1
+    fi
+    
+    # Copy files
+    cp -r "$SOURCE_DIR"/* "$BACKUP_DIR/" 2>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        log_message "Backup completed successfully"
+    else
+        log_message "WARNING: Some files may not have been copied"
+    fi
+    
+    # Create backup summary
+    SUMMARY_FILE="$BACKUP_DIR/backup_summary.txt"
+    echo "Backup Summary" > "$SUMMARY_FILE"
+    echo "Date: $(date)" >> "$SUMMARY_FILE"
+    echo "Source: $SOURCE_DIR" >> "$SUMMARY_FILE"
+    echo "Destination: $BACKUP_DIR" >> "$SUMMARY_FILE"
+    echo "" >> "$SUMMARY_FILE"
+    echo "Files backed up:" >> "$SUMMARY_FILE"
+    find "$BACKUP_DIR" -type f -not -name "backup_summary.txt" >> "$SUMMARY_FILE"
+    
+    # Calculate backup size
+    BACKUP_SIZE=$(du -sh "$BACKUP_DIR" | cut -f1)
+    echo "" >> "$SUMMARY_FILE"
+    echo "Total backup size: $BACKUP_SIZE" >> "$SUMMARY_FILE"
+    
+    log_message "Backup size: $BACKUP_SIZE"
+}
+
+# Function to cleanup old backups
+cleanup_old_backups() {
+    log_message "Checking for old backups to cleanup"
+    
+    # Count existing backups
+    BACKUP_COUNT=$(find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "backup_*" | wc -l)
+    log_message "Current backup count: $BACKUP_COUNT"
+    
+    if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
+        EXCESS_COUNT=$((BACKUP_COUNT - MAX_BACKUPS))
+        log_message "Removing $EXCESS_COUNT old backup(s)"
+        
+        # Remove oldest backups
+        find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "backup_*" | sort | head -n "$EXCESS_COUNT" | while read -r old_backup; do
+            log_message "Removing old backup: $old_backup"
+            rm -rf "$old_backup"
+        done
+    else
+        log_message "No cleanup needed"
+    fi
+}
+
+# Function to verify backup
+verify_backup() {
+    log_message "Verifying backup integrity"
+    
+    SOURCE_COUNT=$(find "$SOURCE_DIR" -type f 2>/dev/null | wc -l)
+    BACKUP_COUNT=$(find "$BACKUP_DIR" -type f -not -name "backup_summary.txt" 2>/dev/null | wc -l)
+    
+    log_message "Source files: $SOURCE_COUNT"
+    log_message "Backed up files: $BACKUP_COUNT"
+    
+    if [ "$SOURCE_COUNT" -eq "$BACKUP_COUNT" ]; then
+        log_message "Backup verification: PASSED"
+        return 0
+    else
+        log_message "Backup verification: FAILED - File count mismatch"
+        return 1
+    fi
+}
+
+# Function to generate backup report
+generate_backup_report() {
+    REPORT_FILE="$BACKUP_BASE_DIR/backup_report_$DATE_STAMP.txt"
+    
+    echo "Backup Report" > "$REPORT_FILE"
+    echo "Generated: $(date)" >> "$REPORT_FILE"
+    echo "Backup Directory: $BACKUP_DIR" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    
+    echo "=== Backup Statistics ===" >> "$REPORT_FILE"
+    echo "Total backups: $(find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "backup_*" | wc -l)" >> "$REPORT_FILE"
+    echo "Latest backup size: $(du -sh "$BACKUP_DIR" | cut -f1)" >> "$REPORT_FILE"
+    echo "Total backup storage used: $(du -sh "$BACKUP_BASE_DIR" | cut -f1)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    
+    echo "=== Available Backups ===" >> "$REPORT_FILE"
+    find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "backup_*" | sort >> "$REPORT_FILE"
+    
+    log_message "Backup report generated: $REPORT_FILE"
+}
+
+# Main execution
+echo "=== Backup Automation Script ==="
+log_message "Backup automation started"
+
+# Check if source directory exists
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Source directory not found. Creating sample files..."
+    mkdir -p "$SOURCE_DIR"
+    echo "Sample file 1" > "$SOURCE_DIR/sample1.txt"
+    echo "Sample file 2" > "$SOURCE_DIR/sample2.txt"
+    echo "Sample script" > "$SOURCE_DIR/sample.sh"
+    log_message "Created sample source files"
+fi
+
+# Perform backup operations
+create_backup_dir
+perform_backup
+
+if [ $? -eq 0 ]; then
+    verify_backup
+    cleanup_old_backups
+    generate_backup_report
+    
+    echo ""
+    echo "Backup completed successfully!"
+    echo "Backup location: $BACKUP_DIR"
+    echo "Log file: $LOG_FILE"
+    
+    # Display backup summary
+    if [ -f "$BACKUP_DIR/backup_summary.txt" ]; then
+        echo ""
+        echo "=== Backup Summary ==="
+        cat "$BACKUP_DIR/backup_summary.txt"
+    fi
+else
+    echo "Backup failed! Check log file: $LOG_FILE"
+fi
+
+log_message "Backup automation completed"
+Make executable and run:
+chmod +x backup_automation.sh
+./backup_automation.sh
+Verify the backup was created:
+ls -la ~/backups/
+Troubleshooting Tips
+Common Issues and Solutions
+Issue 1: Permission Denied
+
+Problem: Script shows "Permission denied" when executing
+Solution: Make sure the script is executable using chmod +x script_name.sh
+Issue 2: Command Not Found
+
+Problem: Script cannot find certain commands
+Solution: Check if the command exists using which command_name or install required packages
+Issue 3: Variable Not Expanding
+
+Problem: Variables show literal text instead of values
+Solution: Ensure proper syntax with $VARIABLE or ${VARIABLE} and check for typos
+Issue 4: Infinite Loop
+
+Problem: While loop never terminates
+Solution: Ensure the loop condition will eventually become false and include proper counter updates
+Issue 5: File Not Found
+
+Problem: Script cannot find files or directories
+Solution: Use absolute paths or verify the current working directory with pwd
+Debugging Techniques
+Add debug output: Use echo statements to track script execution
+Use set -x: Add set -x at the beginning of your script for detailed execution trace
+Check exit codes: Use echo $? after commands to check their success status
+Validate inputs: Always check if files exist before operating on them
+Use shellcheck: Install and use shellcheck tool to identify common scripting errors
+Conclusion
+In this comprehensive lab, you have successfully learned and implemented the fundamental concepts of shell scripting in Linux. You have accomplished the following key objectives:
+
+Technical Skills Developed:
+
+Created and executed shell scripts with proper shebang notation and permissions
+Implemented variables for data storage and manipulation
+Developed conditional logic using if-else statements and comparison operators
+Mastered both for loops and while loops for iterative operations
+Built nested loops for complex data processing tasks
+Automated real-world system administration tasks
+Practical Applications Completed:
+
+Built a system information gathering tool that automates hardware and software inventory
+Created a file management system that organizes files by type and performs cleanup operations
+Developed a backup automation solution with verification and rotation capabilities
+Implemented logging mechanisms for tracking script operations
+Generated reports for system monitoring and maintenance
+Professional Skills Gained:
+
+Understanding of shell scripting best practices and coding standards
+Experience with error handling and input validation
+Knowledge of system automation techniques used in enterprise environments
+Ability to create maintainable and documented shell scripts
+Skills in debugging and troubleshooting shell script issues
+These shell scripting skills are essential for Linux system administrators and form a critical foundation for the Al Razzaq Linux Security & Administration Specialist certification. The automation techniques you've learned will significantly improve efficiency in managing Linux systems, reduce manual errors, and provide consistent system operations.
+
+The scripts you've created can be adapted and extended for various real-world scenarios, including system monitoring, log analysis, user management, security auditing, and deployment automation. Continue practicing by creating scripts for your specific use cases and gradually incorporating more advanced features like functions, arrays, and error handling mechanisms.
