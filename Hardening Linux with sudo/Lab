@@ -1,0 +1,438 @@
+Hardening Linux with sudo
+Objectives
+By the end of this lab, you will be able to:
+
+Understand the importance of sudo in Linux security architecture
+Securely configure the sudoers file using the visudo command
+Implement least privilege access control principles for different user roles
+Configure comprehensive logging for sudo commands to maintain security audit trails
+Apply best practices for sudo hardening in enterprise environments
+Troubleshoot common sudo configuration issues
+Prerequisites
+Before starting this lab, you should have:
+
+Basic understanding of Linux command line interface
+Knowledge of user and group management in Linux
+Familiarity with file permissions and ownership concepts
+Understanding of text editors like nano or vim
+Basic knowledge of log file locations in Linux systems
+Ready-to-Use Cloud Machines
+Al Nafi provides pre-configured Linux-based cloud machines for this lab. Simply click Start Lab to access your dedicated environment. No need to build your own virtual machine or configure additional systems. Everything you need is ready to use on a single Linux machine.
+
+Lab Environment Setup
+Your lab machine comes with:
+
+Ubuntu 20.04 LTS or CentOS 8
+Multiple user accounts for testing
+Pre-installed logging utilities
+Administrative access for configuration
+Task 1: Secure the sudoers file using visudo
+Subtask 1.1: Understanding the Current sudo Configuration
+First, let's examine the current sudo configuration and understand the default setup.
+
+Step 1: Check the current sudo version and basic information
+
+sudo --version
+Step 2: Display the current effective sudo configuration
+
+sudo -l
+Step 3: Examine the main sudoers file location and permissions
+
+ls -la /etc/sudoers
+Step 4: Check for additional sudoers configuration files
+
+ls -la /etc/sudoers.d/
+Subtask 1.2: Using visudo to Edit the sudoers File Safely
+The visudo command is the only safe way to edit the sudoers file because it performs syntax checking before saving changes.
+
+Step 1: Open the sudoers file with visudo
+
+sudo visudo
+Step 2: Understand the default sudoers file structure by examining these key sections:
+
+# User privilege specification
+root    ALL=(ALL:ALL) ALL
+
+# Members of the admin group may gain root privileges
+%admin ALL=(ALL) ALL
+
+# Allow members of group sudo to execute any command
+%sudo   ALL=(ALL:ALL) ALL
+Step 3: Add security-focused configurations to the sudoers file. Navigate to the end of the file and add:
+
+# Security hardening configurations
+Defaults    env_reset
+Defaults    mail_badpass
+Defaults    secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults    use_pty
+Defaults    log_input, log_output
+Defaults    iolog_dir=/var/log/sudo-io
+Defaults    logfile=/var/log/sudo.log
+Defaults    timestamp_timeout=15
+Defaults    passwd_tries=3
+Defaults    passwd_timeout=5
+Step 4: Save and exit the editor. If using nano, press Ctrl+X, then Y, then Enter. If using vim, press Esc, type :wq, and press Enter.
+
+Subtask 1.3: Creating Backup and Recovery Procedures
+Step 1: Create a backup of the original sudoers file
+
+sudo cp /etc/sudoers /etc/sudoers.backup.$(date +%Y%m%d)
+Step 2: Verify the backup was created
+
+ls -la /etc/sudoers.backup.*
+Step 3: Test the current configuration
+
+sudo -l
+Task 2: Set up least privilege access for users
+Subtask 2.1: Creating Test Users for Different Privilege Levels
+Step 1: Create test users for different roles
+
+sudo useradd -m -s /bin/bash webadmin
+sudo useradd -m -s /bin/bash dbadmin
+sudo useradd -m -s /bin/bash developer
+sudo useradd -m -s /bin/bash auditor
+Step 2: Set passwords for the test users
+
+sudo passwd webadmin
+sudo passwd dbadmin
+sudo passwd developer
+sudo passwd auditor
+Step 3: Create groups for role-based access
+
+sudo groupadd web-operators
+sudo groupadd db-operators
+sudo groupadd dev-team
+sudo groupadd audit-team
+Step 4: Add users to their respective groups
+
+sudo usermod -a -G web-operators webadmin
+sudo usermod -a -G db-operators dbadmin
+sudo usermod -a -G dev-team developer
+sudo usermod -a -G audit-team auditor
+Subtask 2.2: Configuring Least Privilege Access Rules
+Step 1: Create separate sudoers files for each role using the sudoers.d directory
+
+sudo visudo -f /etc/sudoers.d/web-operators
+Step 2: Add the following configuration for web operators:
+
+# Web operators - limited to web server management
+%web-operators ALL=(ALL) /usr/sbin/service apache2 *, /usr/sbin/service nginx *, /usr/bin/systemctl start apache2, /usr/bin/systemctl stop apache2, /usr/bin/systemctl restart apache2, /usr/bin/systemctl reload apache2, /usr/bin/systemctl start nginx, /usr/bin/systemctl stop nginx, /usr/bin/systemctl restart nginx, /usr/bin/systemctl reload nginx, /bin/tail /var/log/apache2/*, /bin/tail /var/log/nginx/*
+
+# Specific user permissions
+webadmin ALL=(ALL) /usr/sbin/service apache2 *, /usr/sbin/service nginx *, /usr/bin/systemctl start apache2, /usr/bin/systemctl stop apache2, /usr/bin/systemctl restart apache2, /usr/bin/systemctl reload apache2
+Step 3: Create configuration for database operators
+
+sudo visudo -f /etc/sudoers.d/db-operators
+Step 4: Add the following configuration for database operators:
+
+# Database operators - limited to database management
+%db-operators ALL=(ALL) /usr/bin/systemctl start mysql, /usr/bin/systemctl stop mysql, /usr/bin/systemctl restart mysql, /usr/bin/systemctl status mysql, /usr/bin/systemctl start postgresql, /usr/bin/systemctl stop postgresql, /usr/bin/systemctl restart postgresql, /bin/tail /var/log/mysql/*, /bin/tail /var/log/postgresql/*
+
+# Specific user permissions
+dbadmin ALL=(ALL) /usr/bin/systemctl start mysql, /usr/bin/systemctl stop mysql, /usr/bin/systemctl restart mysql, /usr/bin/systemctl status mysql
+Step 5: Create configuration for developers
+
+sudo visudo -f /etc/sudoers.d/dev-team
+Step 6: Add the following configuration for developers:
+
+# Development team - limited development tools access
+%dev-team ALL=(ALL) /usr/bin/apt install *, /usr/bin/apt update, /usr/bin/apt upgrade, /usr/bin/systemctl restart development-*, /bin/mkdir /opt/development/*, /bin/chown developer:dev-team /opt/development/*
+
+# Specific user permissions with restrictions
+developer ALL=(ALL) /usr/bin/apt install *, /usr/bin/apt update, /usr/bin/systemctl restart development-*
+developer ALL=(ALL) !/usr/bin/apt remove *, !/usr/bin/apt purge *, !/bin/rm -rf /*
+Step 7: Create configuration for auditors (read-only access)
+
+sudo visudo -f /etc/sudoers.d/audit-team
+Step 8: Add the following configuration for auditors:
+
+# Audit team - read-only access to logs and system information
+%audit-team ALL=(ALL) /bin/cat /var/log/*, /bin/tail /var/log/*, /bin/head /var/log/*, /usr/bin/find /var/log/ *, /bin/ls /var/log/*, /usr/bin/systemctl status *, /usr/bin/ps aux, /usr/bin/netstat *, /usr/bin/ss *
+
+# Specific user permissions
+auditor ALL=(ALL) /bin/cat /var/log/*, /bin/tail /var/log/*, /usr/bin/systemctl status *
+Subtask 2.3: Testing Least Privilege Access
+Step 1: Test web administrator access
+
+su - webadmin
+sudo systemctl status apache2
+sudo systemctl restart apache2
+sudo cat /etc/passwd  # This should fail
+exit
+Step 2: Test database administrator access
+
+su - dbadmin
+sudo systemctl status mysql
+sudo systemctl restart mysql
+sudo apt update  # This should fail
+exit
+Step 3: Test developer access
+
+su - developer
+sudo apt update
+sudo apt install curl
+sudo rm -rf /etc/passwd  # This should fail due to restriction
+exit
+Step 4: Test auditor access
+
+su - auditor
+sudo tail /var/log/syslog
+sudo systemctl status ssh
+sudo systemctl restart ssh  # This should fail
+exit
+Task 3: Configure logging for sudo commands
+Subtask 3.1: Setting Up Comprehensive sudo Logging
+Step 1: Create the sudo log directory with proper permissions
+
+sudo mkdir -p /var/log/sudo-io
+sudo chmod 750 /var/log/sudo-io
+sudo chown root:adm /var/log/sudo-io
+Step 2: Verify the logging configuration in the main sudoers file
+
+sudo visudo
+Ensure these lines are present:
+
+Defaults    logfile=/var/log/sudo.log
+Defaults    log_input, log_output
+Defaults    iolog_dir=/var/log/sudo-io
+Defaults    syslog=auth
+Defaults    syslog_goodpri=info
+Defaults    syslog_badpri=alert
+Step 3: Create a custom rsyslog configuration for sudo
+
+sudo nano /etc/rsyslog.d/50-sudo.conf
+Step 4: Add the following content to the rsyslog configuration:
+
+# Log sudo commands to separate file
+:programname, isequal, "sudo" /var/log/sudo-commands.log
+& stop
+
+# Log authentication events
+auth,authpriv.*                 /var/log/auth.log
+Step 5: Restart rsyslog to apply the new configuration
+
+sudo systemctl restart rsyslog
+Subtask 3.2: Configuring Log Rotation
+Step 1: Create a logrotate configuration for sudo logs
+
+sudo nano /etc/logrotate.d/sudo
+Step 2: Add the following logrotate configuration:
+
+/var/log/sudo.log /var/log/sudo-commands.log {
+    weekly
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 640 root adm
+    postrotate
+        /usr/lib/rsyslog/rsyslog-rotate
+    endscript
+}
+
+/var/log/sudo-io/*/*.log {
+    weekly
+    missingok
+    rotate 12
+    compress
+    delaycompress
+    notifempty
+    create 640 root adm
+}
+Step 3: Test the logrotate configuration
+
+sudo logrotate -d /etc/logrotate.d/sudo
+Subtask 3.3: Testing and Monitoring sudo Logging
+Step 1: Generate test sudo activities
+
+sudo ls /root
+sudo cat /etc/passwd
+sudo systemctl status ssh
+Step 2: Check the main sudo log file
+
+sudo tail -f /var/log/sudo.log
+Step 3: Check the system authentication log
+
+sudo tail -f /var/log/auth.log | grep sudo
+Step 4: Check the custom sudo commands log
+
+sudo tail -f /var/log/sudo-commands.log
+Step 5: Examine input/output logging
+
+sudo ls -la /var/log/sudo-io/
+Step 6: View a specific session log (replace with actual session ID)
+
+sudo find /var/log/sudo-io -name "*.log" -type f | head -1 | xargs sudo cat
+Subtask 3.4: Creating Log Monitoring Scripts
+Step 1: Create a sudo monitoring script
+
+sudo nano /usr/local/bin/sudo-monitor.sh
+Step 2: Add the following monitoring script:
+
+#!/bin/bash
+
+# Sudo Activity Monitor Script
+LOG_FILE="/var/log/sudo.log"
+ALERT_EMAIL="admin@company.com"
+TEMP_FILE="/tmp/sudo-monitor.tmp"
+
+# Function to send alerts
+send_alert() {
+    local message="$1"
+    echo "SUDO SECURITY ALERT: $message" | logger -p auth.warning -t sudo-monitor
+    # Uncomment the next line to enable email alerts
+    # echo "$message" | mail -s "Sudo Security Alert" "$ALERT_EMAIL"
+}
+
+# Monitor for suspicious activities
+check_suspicious_commands() {
+    # Check for dangerous commands in the last hour
+    DANGEROUS_COMMANDS="rm -rf|mkfs|fdisk|dd if=|passwd root|userdel|usermod -u 0"
+    
+    if tail -n 100 "$LOG_FILE" | grep -E "$DANGEROUS_COMMANDS" > "$TEMP_FILE"; then
+        send_alert "Dangerous sudo commands detected: $(cat $TEMP_FILE)"
+    fi
+}
+
+# Check for failed sudo attempts
+check_failed_attempts() {
+    FAILED_COUNT=$(tail -n 100 "$LOG_FILE" | grep -c "authentication failure")
+    
+    if [ "$FAILED_COUNT" -gt 5 ]; then
+        send_alert "Multiple sudo authentication failures detected: $FAILED_COUNT attempts"
+    fi
+}
+
+# Check for unusual sudo usage patterns
+check_unusual_patterns() {
+    # Check for sudo usage outside business hours (assuming 9 AM to 6 PM)
+    CURRENT_HOUR=$(date +%H)
+    
+    if [ "$CURRENT_HOUR" -lt 9 ] || [ "$CURRENT_HOUR" -gt 18 ]; then
+        RECENT_SUDO=$(tail -n 10 "$LOG_FILE" | grep "$(date +%Y-%m-%d)")
+        if [ -n "$RECENT_SUDO" ]; then
+            send_alert "Sudo activity detected outside business hours: $RECENT_SUDO"
+        fi
+    fi
+}
+
+# Main execution
+if [ -f "$LOG_FILE" ]; then
+    check_suspicious_commands
+    check_failed_attempts
+    check_unusual_patterns
+    
+    # Clean up
+    rm -f "$TEMP_FILE"
+else
+    send_alert "Sudo log file not found: $LOG_FILE"
+fi
+Step 3: Make the script executable
+
+sudo chmod +x /usr/local/bin/sudo-monitor.sh
+Step 4: Test the monitoring script
+
+sudo /usr/local/bin/sudo-monitor.sh
+Step 5: Create a cron job to run the monitoring script every 15 minutes
+
+sudo crontab -e
+Step 6: Add the following line to the crontab:
+
+*/15 * * * * /usr/local/bin/sudo-monitor.sh
+Verification and Testing
+Comprehensive Security Testing
+Step 1: Verify all sudo configurations are working correctly
+
+sudo visudo -c
+Step 2: Test each user's access permissions
+
+# Test as webadmin
+su - webadmin -c "sudo -l"
+
+# Test as dbadmin  
+su - dbadmin -c "sudo -l"
+
+# Test as developer
+su - developer -c "sudo -l"
+
+# Test as auditor
+su - auditor -c "sudo -l"
+Step 3: Verify logging is functioning
+
+sudo tail -20 /var/log/sudo.log
+sudo tail -20 /var/log/auth.log | grep sudo
+Step 4: Check log file permissions
+
+ls -la /var/log/sudo*
+ls -la /var/log/sudo-io/
+Step 5: Verify log rotation configuration
+
+sudo logrotate -d /etc/logrotate.d/sudo
+Troubleshooting Common Issues
+Issue 1: Syntax Errors in sudoers File
+Problem: visudo reports syntax errors Solution:
+
+# Always use visudo to edit
+sudo visudo
+
+# If locked out, boot into recovery mode and fix:
+pkexec visudo
+# or
+sudo -k && sudo visudo
+Issue 2: Users Cannot Execute Allowed Commands
+Problem: Users get "command not found" or permission denied Solution:
+
+# Check the secure_path setting
+sudo visudo
+# Ensure secure_path includes necessary directories
+
+# Verify user group membership
+groups username
+id username
+Issue 3: Logging Not Working
+Problem: sudo commands are not being logged Solution:
+
+# Check rsyslog is running
+sudo systemctl status rsyslog
+
+# Verify log directory permissions
+sudo ls -la /var/log/sudo-io/
+sudo chmod 750 /var/log/sudo-io/
+
+# Restart logging services
+sudo systemctl restart rsyslog
+Issue 4: Too Many Authentication Prompts
+Problem: Users are prompted for passwords too frequently Solution:
+
+# Adjust timestamp_timeout in sudoers
+sudo visudo
+# Add or modify: Defaults timestamp_timeout=30
+Security Best Practices Summary
+Key Security Configurations Implemented
+Secure Path Enforcement: Prevents PATH manipulation attacks
+Input/Output Logging: Records all sudo session activities
+Timestamp Timeout: Limits sudo session duration
+Password Attempts Limitation: Prevents brute force attacks
+Mail Notifications: Alerts on authentication failures
+Least Privilege Access: Users only get necessary permissions
+Comprehensive Logging: Multiple log sources for audit trails
+Automated Monitoring: Scripts detect suspicious activities
+Additional Hardening Recommendations
+Regular Audit Reviews: Schedule monthly sudo access reviews
+Log Analysis: Implement automated log analysis tools
+User Training: Educate users on proper sudo usage
+Backup Procedures: Maintain current sudoers file backups
+Incident Response: Develop procedures for sudo-related security incidents
+Conclusion
+In this lab, you have successfully implemented comprehensive sudo hardening on a Linux system. You learned how to:
+
+Securely configure the sudoers file using visudo with proper syntax checking
+Implement least privilege access control by creating role-based permissions for different user types
+Set up comprehensive logging for all sudo activities including input/output capture
+Create automated monitoring scripts to detect suspicious sudo usage patterns
+Configure log rotation to manage disk space while maintaining audit trails
+Apply security best practices to prevent common sudo-related vulnerabilities
+These skills are essential for maintaining secure Linux environments in enterprise settings. Proper sudo configuration is a critical component of system security that helps prevent privilege escalation attacks while maintaining operational efficiency. The logging and monitoring capabilities you've implemented provide the visibility needed for security compliance and incident response.
+
+The techniques learned in this lab directly apply to real-world scenarios where system administrators must balance security requirements with operational needs. By implementing least privilege access and comprehensive logging, you've created a robust security framework that can be adapted to various organizational requirements.
