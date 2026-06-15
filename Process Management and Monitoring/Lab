@@ -1,0 +1,582 @@
+Process Management and Monitoring
+Objectives
+By the end of this lab, students will be able to:
+
+Monitor system processes using ps, top, and htop commands
+Understand process states and resource utilization
+Manage processes using kill, nice, and renice commands
+Create automated process monitoring scripts using cron
+Implement process management best practices for system administration
+Troubleshoot common process-related issues
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Linux command-line knowledge
+Understanding of file permissions and ownership
+Familiarity with text editors (nano, vim, or gedit)
+Knowledge of basic shell scripting concepts
+Access to a Linux terminal with sudo privileges
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Lab Environment Setup
+Your cloud machine comes pre-installed with all necessary tools:
+
+Ubuntu/CentOS Linux distribution
+Process monitoring utilities (ps, top, htop)
+Cron daemon for task scheduling
+Text editors and development tools
+Task 1: Process Monitoring with ps, top, and htop
+Subtask 1.1: Understanding Process Basics
+First, let's understand what processes are and how to view them.
+
+Step 1: Open your terminal and check currently running processes for your user:
+
+ps
+Step 2: View all processes running on the system:
+
+ps aux
+Step 3: Understand the output columns:
+
+USER: Process owner
+PID: Process ID (unique identifier)
+%CPU: CPU usage percentage
+%MEM: Memory usage percentage
+VSZ: Virtual memory size
+RSS: Resident Set Size (physical memory)
+TTY: Terminal type
+STAT: Process state
+START: Start time
+TIME: CPU time consumed
+COMMAND: Command that started the process
+Subtask 1.2: Using ps Command Variations
+Step 1: Display processes in a tree format to show parent-child relationships:
+
+ps auxf
+Step 2: Show processes for a specific user (replace 'username' with your actual username):
+
+ps -u $(whoami)
+Step 3: Display processes with specific columns:
+
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu
+Step 4: Find processes by name using grep:
+
+ps aux | grep bash
+Subtask 1.3: Real-time Monitoring with top
+Step 1: Launch the top command for real-time process monitoring:
+
+top
+Step 2: While top is running, practice these interactive commands:
+
+Press q to quit
+Press k to kill a process (we'll practice this safely later)
+Press r to renice a process
+Press M to sort by memory usage
+Press P to sort by CPU usage
+Press 1 to show individual CPU cores
+Step 3: Run top with specific options:
+
+top -u $(whoami)
+This shows only your processes.
+
+Subtask 1.4: Enhanced Monitoring with htop
+Step 1: Install htop if not already available:
+
+sudo apt update && sudo apt install htop -y
+For CentOS/RHEL systems:
+
+sudo yum install htop -y
+Step 2: Launch htop for an enhanced interface:
+
+htop
+Step 3: Explore htop features:
+
+Use arrow keys to navigate
+Press F1 for help
+Press F2 for setup menu
+Press F3 to search for processes
+Press F4 to filter processes
+Press F5 to show process tree
+Press F9 to kill processes
+Press F10 to quit
+Task 2: Process Management with kill, nice, and renice
+Subtask 2.1: Creating Test Processes
+Before managing processes, let's create some test processes to work with.
+
+Step 1: Create a simple CPU-intensive script:
+
+cat > cpu_intensive.sh << 'EOF'
+#!/bin/bash
+# CPU intensive script for testing
+echo "Starting CPU intensive process..."
+while true; do
+    echo "Working..." > /dev/null
+    sleep 0.1
+done
+EOF
+Step 2: Make the script executable:
+
+chmod +x cpu_intensive.sh
+Step 3: Create a memory-intensive script:
+
+cat > memory_test.sh << 'EOF'
+#!/bin/bash
+# Memory test script
+echo "Starting memory test process..."
+data=""
+for i in {1..1000}; do
+    data="${data}This is test data for memory consumption. "
+    sleep 1
+done
+EOF
+Step 4: Make the memory script executable:
+
+chmod +x memory_test.sh
+Subtask 2.2: Understanding Process Priorities with nice
+Step 1: Check the current nice value of your shell:
+
+ps -o pid,ni,cmd -p $$
+Step 2: Start a process with default priority:
+
+./cpu_intensive.sh &
+Step 3: Note the process ID and check its priority:
+
+jobs -l
+ps -o pid,ni,cmd | grep cpu_intensive
+Step 4: Start another process with lower priority (higher nice value):
+
+nice -n 10 ./cpu_intensive.sh &
+Step 5: Start a process with higher priority (lower nice value, requires sudo):
+
+sudo nice -n -5 ./cpu_intensive.sh &
+Step 6: Compare the processes:
+
+ps -o pid,ni,cmd | grep cpu_intensive
+Subtask 2.3: Changing Process Priority with renice
+Step 1: Find a running process to modify:
+
+ps aux | grep cpu_intensive
+Step 2: Change the nice value of a running process (replace PID with actual process ID):
+
+renice 15 PID
+Step 3: Verify the change:
+
+ps -o pid,ni,cmd -p PID
+Step 4: Change priority for all processes of a user:
+
+sudo renice 5 -u $(whoami)
+Subtask 2.4: Terminating Processes with kill
+Step 1: List your background jobs:
+
+jobs -l
+Step 2: Terminate a process using job number:
+
+kill %1
+Step 3: Find processes by name and kill them:
+
+pkill -f cpu_intensive
+Step 4: Force kill stubborn processes:
+
+pkill -9 -f cpu_intensive
+Step 5: Kill processes by user (be careful with this):
+
+# Don't run this command as it will kill all your processes
+# pkill -u $(whoami)
+echo "This would kill all processes for user: $(whoami)"
+Step 6: Clean up any remaining test processes:
+
+killall -9 cpu_intensive.sh 2>/dev/null || true
+killall -9 memory_test.sh 2>/dev/null || true
+Task 3: Automating Process Checks using Cron
+Subtask 3.1: Creating Process Monitoring Scripts
+Step 1: Create a directory for monitoring scripts:
+
+mkdir -p ~/process_monitoring
+cd ~/process_monitoring
+Step 2: Create a system resource monitoring script:
+
+cat > system_monitor.sh << 'EOF'
+#!/bin/bash
+# System monitoring script
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+LOG_FILE="$HOME/process_monitoring/system_monitor.log"
+
+echo "=== System Monitor Report - $DATE ===" >> "$LOG_FILE"
+
+# CPU and Memory usage
+echo "CPU and Memory Usage:" >> "$LOG_FILE"
+top -bn1 | head -5 >> "$LOG_FILE"
+
+# Top 5 CPU consuming processes
+echo -e "\nTop 5 CPU consuming processes:" >> "$LOG_FILE"
+ps aux --sort=-%cpu | head -6 >> "$LOG_FILE"
+
+# Top 5 Memory consuming processes
+echo -e "\nTop 5 Memory consuming processes:" >> "$LOG_FILE"
+ps aux --sort=-%mem | head -6 >> "$LOG_FILE"
+
+# Disk usage
+echo -e "\nDisk Usage:" >> "$LOG_FILE"
+df -h >> "$LOG_FILE"
+
+echo -e "\n" >> "$LOG_FILE"
+EOF
+Step 3: Make the script executable:
+
+chmod +x system_monitor.sh
+Step 4: Test the monitoring script:
+
+./system_monitor.sh
+cat system_monitor.log
+Subtask 3.2: Creating Process Alert Scripts
+Step 1: Create a high CPU usage alert script:
+
+cat > cpu_alert.sh << 'EOF'
+#!/bin/bash
+# CPU usage alert script
+THRESHOLD=80
+LOG_FILE="$HOME/process_monitoring/cpu_alerts.log"
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Get current CPU usage (average across all cores)
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+CPU_USAGE=${CPU_USAGE%.*}  # Remove decimal part
+
+if [ "$CPU_USAGE" -gt "$THRESHOLD" ]; then
+    echo "$DATE - HIGH CPU USAGE ALERT: ${CPU_USAGE}%" >> "$LOG_FILE"
+    echo "Top CPU consuming processes:" >> "$LOG_FILE"
+    ps aux --sort=-%cpu | head -10 >> "$LOG_FILE"
+    echo "---" >> "$LOG_FILE"
+fi
+EOF
+Step 2: Create a memory usage alert script:
+
+cat > memory_alert.sh << 'EOF'
+#!/bin/bash
+# Memory usage alert script
+THRESHOLD=80
+LOG_FILE="$HOME/process_monitoring/memory_alerts.log"
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Get current memory usage percentage
+MEMORY_USAGE=$(free | grep Mem | awk '{printf("%.0f", $3/$2 * 100.0)}')
+
+if [ "$MEMORY_USAGE" -gt "$THRESHOLD" ]; then
+    echo "$DATE - HIGH MEMORY USAGE ALERT: ${MEMORY_USAGE}%" >> "$LOG_FILE"
+    echo "Top memory consuming processes:" >> "$LOG_FILE"
+    ps aux --sort=-%mem | head -10 >> "$LOG_FILE"
+    echo "---" >> "$LOG_FILE"
+fi
+EOF
+Step 3: Make alert scripts executable:
+
+chmod +x cpu_alert.sh memory_alert.sh
+Subtask 3.3: Setting up Cron Jobs
+Step 1: Check if cron service is running:
+
+sudo systemctl status cron || sudo systemctl status crond
+Step 2: View current cron jobs:
+
+crontab -l
+Step 3: Edit crontab to add monitoring jobs:
+
+crontab -e
+Step 4: Add the following lines to your crontab (choose nano as editor if prompted):
+
+# System monitoring every 5 minutes
+*/5 * * * * /home/$(whoami)/process_monitoring/system_monitor.sh
+
+# CPU alert check every 2 minutes
+*/2 * * * * /home/$(whoami)/process_monitoring/cpu_alert.sh
+
+# Memory alert check every 2 minutes
+*/2 * * * * /home/$(whoami)/process_monitoring/memory_alert.sh
+
+# Daily cleanup of old logs (keep last 7 days)
+0 0 * * * find /home/$(whoami)/process_monitoring -name "*.log" -mtime +7 -delete
+Step 5: Save and exit the editor (Ctrl+X, then Y, then Enter for nano).
+
+Step 6: Verify cron jobs are scheduled:
+
+crontab -l
+Subtask 3.4: Testing Automated Monitoring
+Step 1: Wait a few minutes and check if logs are being created:
+
+ls -la ~/process_monitoring/
+Step 2: View the system monitor log:
+
+tail -20 ~/process_monitoring/system_monitor.log
+Step 3: Create artificial load to test alerts:
+
+# Start a CPU intensive process
+yes > /dev/null &
+CPU_PID=$!
+
+# Wait a few minutes for cron to run, then check alerts
+sleep 180
+cat ~/process_monitoring/cpu_alerts.log 2>/dev/null || echo "No CPU alerts yet"
+
+# Kill the CPU intensive process
+kill $CPU_PID
+Step 4: Create a process monitoring dashboard script:
+
+cat > dashboard.sh << 'EOF'
+#!/bin/bash
+# Process monitoring dashboard
+clear
+echo "=== Process Monitoring Dashboard ==="
+echo "Current Time: $(date)"
+echo
+
+echo "=== System Load ==="
+uptime
+echo
+
+echo "=== Top 5 CPU Processes ==="
+ps aux --sort=-%cpu | head -6
+echo
+
+echo "=== Top 5 Memory Processes ==="
+ps aux --sort=-%mem | head -6
+echo
+
+echo "=== Recent Alerts ==="
+echo "CPU Alerts:"
+tail -5 ~/process_monitoring/cpu_alerts.log 2>/dev/null || echo "No CPU alerts"
+echo
+echo "Memory Alerts:"
+tail -5 ~/process_monitoring/memory_alerts.log 2>/dev/null || echo "No memory alerts"
+EOF
+Step 5: Make dashboard executable and run it:
+
+chmod +x dashboard.sh
+./dashboard.sh
+Advanced Process Management Techniques
+Creating a Process Management Toolkit
+Step 1: Create a comprehensive process management script:
+
+cat > process_manager.sh << 'EOF'
+#!/bin/bash
+# Comprehensive process management toolkit
+
+show_menu() {
+    echo "=== Process Management Toolkit ==="
+    echo "1. Show all processes"
+    echo "2. Show processes by user"
+    echo "3. Show top CPU processes"
+    echo "4. Show top memory processes"
+    echo "5. Kill process by PID"
+    echo "6. Kill processes by name"
+    echo "7. Change process priority"
+    echo "8. Monitor process in real-time"
+    echo "9. Exit"
+    echo -n "Choose an option: "
+}
+
+show_all_processes() {
+    echo "All running processes:"
+    ps aux | head -20
+}
+
+show_user_processes() {
+    echo -n "Enter username: "
+    read username
+    ps -u "$username" 2>/dev/null || echo "User not found or no processes"
+}
+
+show_top_cpu() {
+    echo "Top 10 CPU consuming processes:"
+    ps aux --sort=-%cpu | head -11
+}
+
+show_top_memory() {
+    echo "Top 10 memory consuming processes:"
+    ps aux --sort=-%mem | head -11
+}
+
+kill_by_pid() {
+    echo -n "Enter PID to kill: "
+    read pid
+    if kill "$pid" 2>/dev/null; then
+        echo "Process $pid terminated successfully"
+    else
+        echo "Failed to kill process $pid"
+    fi
+}
+
+kill_by_name() {
+    echo -n "Enter process name: "
+    read pname
+    if pkill "$pname"; then
+        echo "Processes matching '$pname' terminated"
+    else
+        echo "No processes found matching '$pname'"
+    fi
+}
+
+change_priority() {
+    echo -n "Enter PID: "
+    read pid
+    echo -n "Enter new nice value (-20 to 19): "
+    read nice_val
+    if renice "$nice_val" "$pid" 2>/dev/null; then
+        echo "Priority changed successfully"
+    else
+        echo "Failed to change priority"
+    fi
+}
+
+monitor_realtime() {
+    echo "Starting real-time monitoring (press 'q' to quit)..."
+    sleep 2
+    top
+}
+
+# Main loop
+while true; do
+    show_menu
+    read choice
+    echo
+    
+    case $choice in
+        1) show_all_processes ;;
+        2) show_user_processes ;;
+        3) show_top_cpu ;;
+        4) show_top_memory ;;
+        5) kill_by_pid ;;
+        6) kill_by_name ;;
+        7) change_priority ;;
+        8) monitor_realtime ;;
+        9) echo "Goodbye!"; exit 0 ;;
+        *) echo "Invalid option" ;;
+    esac
+    
+    echo
+    echo "Press Enter to continue..."
+    read
+    clear
+done
+EOF
+Step 2: Make the toolkit executable:
+
+chmod +x process_manager.sh
+Step 3: Test the toolkit:
+
+./process_manager.sh
+Troubleshooting Common Issues
+Issue 1: Process Won't Terminate
+Problem: A process doesn't respond to normal kill signals.
+
+Solution:
+
+# Try graceful termination first
+kill PID
+
+# If that doesn't work, force kill
+kill -9 PID
+
+# For multiple processes
+pkill -9 process_name
+Issue 2: High CPU Usage
+Problem: System is slow due to high CPU usage.
+
+Solution:
+
+# Identify CPU-intensive processes
+top -o %CPU
+
+# Lower priority of CPU-intensive processes
+renice 19 PID
+
+# Kill unnecessary processes
+kill PID
+Issue 3: Cron Jobs Not Running
+Problem: Scheduled monitoring scripts aren't executing.
+
+Solution:
+
+# Check cron service status
+sudo systemctl status cron
+
+# Check cron logs
+sudo tail -f /var/log/cron
+
+# Verify crontab syntax
+crontab -l
+
+# Test script manually
+/full/path/to/script.sh
+Issue 4: Permission Denied Errors
+Problem: Scripts can't execute or access files.
+
+Solution:
+
+# Make scripts executable
+chmod +x script.sh
+
+# Check file permissions
+ls -la script.sh
+
+# Fix ownership if needed
+chown user:group script.sh
+Lab Verification and Testing
+Verification Checklist
+Step 1: Verify process monitoring skills:
+
+# Test ps command knowledge
+ps aux | head -10
+
+# Test top command
+timeout 5 top -b -n 1
+
+# Test htop if available
+which htop && echo "htop is available"
+Step 2: Verify process management skills:
+
+# Start a test process
+sleep 300 &
+TEST_PID=$!
+
+# Check process exists
+ps -p $TEST_PID
+
+# Kill the test process
+kill $TEST_PID
+
+# Verify it's gone
+ps -p $TEST_PID 2>/dev/null || echo "Process successfully terminated"
+Step 3: Verify cron automation:
+
+# Check cron jobs are scheduled
+crontab -l | grep -c process_monitoring
+
+# Check log files exist
+ls -la ~/process_monitoring/*.log 2>/dev/null | wc -l
+Step 4: Run final system check:
+
+echo "=== Lab 7 Completion Check ==="
+echo "1. Process monitoring tools available:"
+which ps top htop 2>/dev/null | wc -l
+echo "2. Monitoring scripts created:"
+ls ~/process_monitoring/*.sh 2>/dev/null | wc -l
+echo "3. Cron jobs scheduled:"
+crontab -l 2>/dev/null | wc -l
+echo "4. Log files generated:"
+ls ~/process_monitoring/*.log 2>/dev/null | wc -l
+echo "Lab 7 verification complete!"
+Conclusion
+In this comprehensive lab, you have successfully learned and implemented essential process management and monitoring techniques on Linux systems. You have accomplished the following key objectives:
+
+Process Monitoring Mastery: You learned to use ps, top, and htop commands to monitor system processes effectively. These tools are fundamental for system administrators to understand system performance and resource utilization.
+
+Process Management Skills: You gained hands-on experience with kill, nice, and renice commands to manage process lifecycle and priorities. This knowledge is crucial for maintaining system stability and performance optimization.
+
+Automation Implementation: You created automated monitoring solutions using cron jobs, enabling continuous system surveillance without manual intervention. This automation capability is essential for proactive system administration.
+
+Practical Application: You built a comprehensive process management toolkit and monitoring dashboard, demonstrating real-world application of the concepts learned.
+
+Troubleshooting Expertise: You learned to identify and resolve common process-related issues, preparing you for real-world system administration challenges.
+
+These skills are fundamental for the Al Razzaq Linux Security & Administration Specialist certification and are directly applicable in professional Linux system administration roles. The automated monitoring scripts you created will continue to provide valuable insights into your system's performance, and the process management techniques will help you maintain optimal system operation.
+
+The knowledge gained in this lab forms the foundation for advanced system administration topics and prepares you for managing complex production environments where process monitoring and management are critical for system reliability and performance.
