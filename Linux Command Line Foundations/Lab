@@ -1,0 +1,375 @@
+Linux Command Line Foundations
+Objectives
+By the end of this lab, students will be able to:
+
+Navigate the Linux file system using essential directory commands
+Understand the Linux directory structure and current working directory concept
+Perform basic file management operations including copying, moving, and deleting files
+Create and edit text files using both vim and nano text editors
+Apply proper command syntax and understand command options
+Demonstrate proficiency with fundamental Linux terminal operations
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of what an operating system is
+Familiarity with the concept of files and folders
+No prior Linux experience required - this lab starts from the beginning
+Ability to type commands accurately
+Lab Environment Setup
+Al Nafi Cloud Machine Access: This lab uses Al Nafi's pre-configured Linux-based cloud machines. Simply click Start Lab to access your dedicated Linux environment. No virtual machine setup or installation is required on your part.
+
+Your cloud machine comes with:
+
+Ubuntu Linux operating system
+Terminal access
+Pre-installed text editors (vim and nano)
+Full administrative privileges
+Task 1: Directory Navigation Mastery
+Subtask 1.1: Understanding Your Current Location
+First, let's understand where you are in the file system and learn to navigate effectively.
+
+Step 1: Open the terminal by clicking on the terminal icon or pressing Ctrl + Alt + T.
+
+Step 2: Check your current working directory using the pwd command:
+
+pwd
+Expected Output: You should see something like /home/student or /home/username
+
+Step 3: List the contents of your current directory:
+
+ls
+Step 4: Get detailed information about directory contents:
+
+ls -l
+Step 5: Show hidden files and directories:
+
+ls -la
+Subtask 1.2: Exploring the File System Structure
+Step 1: Navigate to the root directory:
+
+cd /
+Step 2: Verify your location:
+
+pwd
+Step 3: List the contents of the root directory:
+
+ls -l
+Step 4: Navigate to the home directory:
+
+cd /home
+Step 5: List all user directories:
+
+ls -l
+Step 6: Return to your personal home directory:
+
+cd ~
+Step 7: Verify you're back in your home directory:
+
+pwd
+Subtask 1.3: Creating and Navigating Custom Directories
+Step 1: Create a new directory for lab practice:
+
+mkdir lab_practice
+Step 2: Verify the directory was created:
+
+ls -l
+Step 3: Navigate into the new directory:
+
+cd lab_practice
+Step 4: Create multiple subdirectories:
+
+mkdir documents images scripts
+Step 5: List the newly created directories:
+
+ls -l
+Step 6: Navigate to the documents directory:
+
+cd documents
+Step 7: Navigate back to the parent directory using relative path:
+
+cd ..
+Step 8: Navigate to documents using absolute path:
+
+cd ~/lab_practice/documents
+Task 2: File Management Operations
+Subtask 2.1: Creating and Copying Files
+Step 1: Navigate to your lab practice directory:
+
+cd ~/lab_practice
+Step 2: Create a simple text file using the touch command:
+
+touch sample.txt
+Step 3: Create multiple files at once:
+
+touch file1.txt file2.txt file3.txt
+Step 4: Verify the files were created:
+
+ls -l
+Step 5: Copy a single file:
+
+cp sample.txt sample_backup.txt
+Step 6: Copy a file to a different directory:
+
+cp sample.txt documents/
+Step 7: Copy multiple files to a directory:
+
+cp file1.txt file2.txt file3.txt documents/
+Step 8: Verify the copy operations:
+
+ls -l documents/
+Step 9: Copy an entire directory and its contents:
+
+cp -r documents documents_backup
+Step 10: Verify the directory copy:
+
+ls -l documents_backup/
+Subtask 2.2: Moving and Renaming Files
+Step 1: Create a test file for moving operations:
+
+touch move_test.txt
+Step 2: Move the file to the images directory:
+
+mv move_test.txt images/
+Step 3: Verify the file was moved:
+
+ls -l images/
+Step 4: Rename a file using the mv command:
+
+mv sample_backup.txt renamed_sample.txt
+Step 5: Verify the rename operation:
+
+ls -l
+Step 6: Move and rename simultaneously:
+
+mv renamed_sample.txt scripts/final_sample.txt
+Step 7: Verify the move and rename:
+
+ls -l scripts/
+Step 8: Move multiple files at once:
+
+touch temp1.txt temp2.txt temp3.txt
+mv temp1.txt temp2.txt temp3.txt images/
+Subtask 2.3: Removing Files and Directories
+Step 1: Create test files for deletion:
+
+touch delete_me.txt another_delete.txt
+Step 2: Remove a single file:
+
+rm delete_me.txt
+Step 3: Verify the file was deleted:
+
+ls -l
+Step 4: Remove multiple files at once:
+
+rm another_delete.txt file1.txt
+Step 5: Create a test directory with files:
+
+mkdir temp_directory
+touch temp_directory/temp_file1.txt temp_directory/temp_file2.txt
+Step 6: Remove a directory and its contents:
+
+rm -r temp_directory
+Step 7: Use interactive deletion for safety:
+
+touch careful_delete.txt
+rm -i careful_delete.txt
+Note: Type y and press Enter to confirm deletion, or n to cancel.
+
+Task 3: Text Editing with vim and nano
+Subtask 3.1: Basic File Editing with nano
+Step 1: Navigate to your documents directory:
+
+cd ~/lab_practice/documents
+Step 2: Create and edit a file with nano:
+
+nano my_first_file.txt
+Step 3: In the nano editor, type the following content:
+
+Welcome to Linux Command Line Foundations Lab
+This is my first file created with nano editor.
+
+Today's tasks include:
+1. Directory navigation
+2. File management
+3. Text editing
+
+Linux is a powerful operating system!
+Step 4: Save the file by pressing Ctrl + O, then press Enter to confirm.
+
+Step 5: Exit nano by pressing Ctrl + X.
+
+Step 6: Verify the file was created and view its contents:
+
+cat my_first_file.txt
+Step 7: Edit the existing file to add more content:
+
+nano my_first_file.txt
+Step 8: Add the following line at the end:
+
+This line was added during the second edit session.
+Step 9: Save and exit using Ctrl + O, then Ctrl + X.
+
+Subtask 3.2: Advanced Text Editing with vim
+Step 1: Create a new file with vim:
+
+vim advanced_file.txt
+Step 2: Enter Insert mode by pressing i.
+
+Step 3: Type the following content:
+
+Advanced Linux File Editing with vim
+
+vim is a powerful text editor with many features:
+- Modal editing (Normal, Insert, Visual modes)
+- Powerful search and replace
+- Syntax highlighting
+- Extensible with plugins
+
+Basic vim commands:
+- i: Enter insert mode
+- Esc: Return to normal mode
+- :w: Save file
+- :q: Quit vim
+- :wq: Save and quit
+Step 4: Press Esc to return to Normal mode.
+
+Step 5: Save the file by typing :w and pressing Enter.
+
+Step 6: Exit vim by typing :q and pressing Enter.
+
+Step 7: View the file contents:
+
+cat advanced_file.txt
+Step 8: Edit the file again to practice vim navigation:
+
+vim advanced_file.txt
+Step 9: In Normal mode, practice these navigation commands:
+
+Press G to go to the end of the file
+Press gg to go to the beginning
+Press A to append at the end of the current line
+Add this text: - Additional content added
+Press Esc to return to Normal mode
+Step 10: Save and quit using :wq.
+
+Subtask 3.3: Comparing and Managing Text Files
+Step 1: Create a configuration file using nano:
+
+nano system_config.txt
+Step 2: Add the following configuration content:
+
+# System Configuration File
+# Created during Linux Command Line Foundations Lab
+
+[Network Settings]
+hostname=lab-machine
+ip_address=192.168.1.100
+gateway=192.168.1.1
+
+[User Settings]
+default_shell=/bin/bash
+home_directory=/home/student
+
+[System Resources]
+max_memory=8GB
+disk_space=100GB
+cpu_cores=4
+Step 3: Save and exit nano.
+
+Step 4: Create a backup of the configuration file:
+
+cp system_config.txt system_config_backup.txt
+Step 5: Edit the original file with vim to make changes:
+
+vim system_config.txt
+Step 6: In vim, navigate to the IP address line and change it:
+
+Press / to start a search
+Type ip_address and press Enter
+Press A to append at the end of the line
+Change the IP to 192.168.1.150
+Press Esc and type :wq to save and exit
+Step 7: Compare the two files:
+
+diff system_config.txt system_config_backup.txt
+Verification and Testing
+Complete System Check
+Step 1: Navigate back to your main lab directory:
+
+cd ~/lab_practice
+Step 2: Display the complete directory structure you've created:
+
+find . -type f -name "*.txt" | head -10
+Step 3: Count the total number of files created:
+
+find . -type f | wc -l
+Step 4: Display disk usage of your lab directory:
+
+du -sh .
+Step 5: Create a summary file of your lab work:
+
+nano lab_summary.txt
+Step 6: Add this content to document your work:
+
+Linux Command Line Foundations Lab - Completion Summary
+
+Completed Tasks:
+1. Directory Navigation
+   - Used pwd, cd, ls commands successfully
+   - Navigated absolute and relative paths
+   - Created directory structure
+
+2. File Management
+   - Created files with touch command
+   - Copied files and directories with cp
+   - Moved and renamed files with mv
+   - Safely removed files and directories with rm
+
+3. Text Editing
+   - Created and edited files with nano
+   - Used vim for advanced text editing
+   - Practiced both editors' basic operations
+
+Files Created: [Check with find command]
+Directories Created: documents, images, scripts, documents_backup
+
+Lab completed successfully on: [Current date]
+Step 7: Save and exit nano.
+
+Troubleshooting Common Issues
+Permission Denied Errors
+If you encounter permission denied errors:
+
+ls -l filename
+chmod 644 filename
+File Not Found Errors
+Always verify your current location:
+
+pwd
+ls -la
+vim Editor Issues
+If stuck in vim:
+
+Press Esc multiple times to ensure you're in Normal mode
+Type :q! to quit without saving
+Type :wq to save and quit
+Directory Navigation Problems
+Use absolute paths when relative paths fail:
+
+cd ~/lab_practice/documents
+Conclusion
+Congratulations! You have successfully completed the Linux Command Line Foundations lab. Through this hands-on experience, you have:
+
+Mastered Essential Navigation: You can now confidently navigate the Linux file system using pwd, cd, and ls commands, understanding both absolute and relative paths.
+
+Developed File Management Skills: You've learned to create, copy, move, and delete files and directories using touch, cp, mv, and rm commands, which are fundamental to Linux system administration.
+
+Gained Text Editing Proficiency: You've practiced with both nano and vim editors, giving you the flexibility to edit configuration files and scripts in any Linux environment.
+
+Built Foundation Knowledge: These skills form the cornerstone of Linux system administration and are essential for the Al Razzaq Linux Security & Administration Specialist certification path.
+
+Real-World Application: The commands and techniques you've learned are used daily by Linux administrators, developers, and security professionals worldwide.
+
+This foundational knowledge prepares you for more advanced Linux topics including system administration, security hardening, and automation scripting. The command-line proficiency you've developed will serve as the basis for all future Linux learning and professional applications.
+
+Your next steps should include practicing these commands regularly and exploring more advanced options and combinations of these fundamental tools.
