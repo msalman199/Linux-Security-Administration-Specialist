@@ -1,0 +1,344 @@
+User and Group Management
+Objectives
+By the end of this lab, you will be able to:
+
+Create, modify, and delete user accounts using useradd, usermod, and userdel commands
+Manage group accounts using groupadd and groupdel commands
+Add users to groups and manage group memberships using usermod -aG
+Understand Linux user and group configuration files
+Implement proper user account security practices
+Verify user and group configurations using system commands
+Prerequisites
+Before starting this lab, you should have:
+
+Basic knowledge of Linux command line interface
+Understanding of file permissions and ownership concepts
+Familiarity with text editors like nano or vim
+Access to a Linux system with root or sudo privileges
+Basic understanding of Linux directory structure
+Lab Environment Setup
+Al Nafi Cloud Machine Access: Al Nafi provides ready-to-use Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Your cloud machine comes with:
+
+Ubuntu 20.04 LTS or CentOS 8
+Root access via sudo
+All necessary system utilities pre-installed
+Network connectivity for package management
+Task 1: Understanding User and Group Management Fundamentals
+Subtask 1.1: Examine Current User and Group Information
+First, let's explore the current user and group configuration on your system.
+
+Step 1: Check your current user information
+
+whoami
+id
+Step 2: View the user database file
+
+cat /etc/passwd
+Step 3: Examine the group database file
+
+cat /etc/group
+Step 4: Check the shadow password file (requires sudo)
+
+sudo cat /etc/shadow
+Subtask 1.2: Understanding File Structure
+Step 1: Analyze the passwd file format
+
+head -5 /etc/passwd
+echo "Format: username:password:UID:GID:GECOS:home_directory:shell"
+Step 2: Examine group file structure
+
+head -5 /etc/group
+echo "Format: group_name:password:GID:user_list"
+Task 2: User Account Management with useradd, usermod, and userdel
+Subtask 2.1: Creating New Users with useradd
+Step 1: Create a basic user account
+
+sudo useradd john
+Step 2: Verify the user was created
+
+grep john /etc/passwd
+id john
+Step 3: Create a user with specific options
+
+sudo useradd -m -s /bin/bash -c "Jane Smith" -G users jane
+Step 4: Create a user with custom home directory
+
+sudo useradd -m -d /home/custom_mike -s /bin/bash mike
+Step 5: Set passwords for the new users
+
+sudo passwd john
+sudo passwd jane
+sudo passwd mike
+Step 6: Create a system user (for services)
+
+sudo useradd -r -s /bin/false serviceuser
+Subtask 2.2: Modifying Users with usermod
+Step 1: Change user's login shell
+
+sudo usermod -s /bin/zsh john
+grep john /etc/passwd
+Step 2: Modify user's home directory
+
+sudo usermod -d /home/john_new -m john
+ls -la /home/ | grep john
+Step 3: Change user's full name (GECOS field)
+
+sudo usermod -c "John Doe - Developer" john
+grep john /etc/passwd
+Step 4: Lock a user account
+
+sudo usermod -L mike
+sudo passwd -S mike
+Step 5: Unlock the user account
+
+sudo usermod -U mike
+sudo passwd -S mike
+Step 6: Change user's UID
+
+sudo usermod -u 1500 jane
+id jane
+Subtask 2.3: Deleting Users with userdel
+Step 1: Delete a user without removing home directory
+
+sudo userdel serviceuser
+grep serviceuser /etc/passwd || echo "User serviceuser deleted"
+Step 2: Delete a user and remove home directory
+
+sudo userdel -r mike
+ls /home/ | grep mike || echo "Mike's home directory removed"
+Step 3: Force delete a user (if logged in)
+
+sudo userdel -f john 2>/dev/null || echo "User john deleted or not found"
+Task 3: Group Management with groupadd, groupdel, and usermod -aG
+Subtask 3.1: Creating Groups with groupadd
+Step 1: Create a basic group
+
+sudo groupadd developers
+Step 2: Verify group creation
+
+grep developers /etc/group
+getent group developers
+Step 3: Create a group with specific GID
+
+sudo groupadd -g 2000 managers
+Step 4: Create a system group
+
+sudo groupadd -r systemgroup
+Step 5: View all created groups
+
+grep -E "(developers|managers|systemgroup)" /etc/group
+Subtask 3.2: Managing Group Memberships with usermod -aG
+Step 1: Add jane to the developers group
+
+sudo usermod -aG developers jane
+Step 2: Verify group membership
+
+groups jane
+id jane
+Step 3: Add jane to multiple groups
+
+sudo usermod -aG managers,users jane
+groups jane
+Step 4: Create a new user and add to groups simultaneously
+
+sudo useradd -m -G developers,users alice
+groups alice
+Step 5: Set a primary group for a user
+
+sudo usermod -g developers alice
+id alice
+Subtask 3.3: Advanced Group Management
+Step 1: Create a project-specific group and users
+
+sudo groupadd project_alpha
+sudo useradd -m -G project_alpha bob
+sudo useradd -m -G project_alpha carol
+Step 2: Verify project team setup
+
+getent group project_alpha
+Step 3: Remove user from a group
+
+sudo gpasswd -d jane managers
+groups jane
+Step 4: Add user back to group using gpasswd
+
+sudo gpasswd -a jane managers
+groups jane
+Subtask 3.4: Deleting Groups with groupdel
+Step 1: Try to delete a group that's a primary group (will fail)
+
+sudo groupdel developers || echo "Cannot delete primary group"
+Step 2: Change primary group first, then delete
+
+sudo usermod -g users alice
+sudo groupdel developers
+Step 3: Delete unused groups
+
+sudo groupdel systemgroup
+sudo groupdel project_alpha
+Step 4: Verify group deletion
+
+grep -E "(systemgroup|project_alpha)" /etc/group || echo "Groups successfully deleted"
+Task 4: Practical User and Group Management Scenarios
+Subtask 4.1: Setting Up a Development Team
+Step 1: Create development groups
+
+sudo groupadd webdev
+sudo groupadd database
+sudo groupadd devops
+Step 2: Create team members
+
+sudo useradd -m -G webdev,users -s /bin/bash sarah
+sudo useradd -m -G database,users -s /bin/bash david
+sudo useradd -m -G devops,users -s /bin/bash lisa
+Step 3: Set passwords for team members
+
+echo "Setting passwords for team members..."
+sudo passwd sarah
+sudo passwd david
+sudo passwd lisa
+Step 4: Create a shared project directory
+
+sudo mkdir -p /opt/projects
+sudo chgrp webdev /opt/projects
+sudo chmod 775 /opt/projects
+Subtask 4.2: Managing User Account Policies
+Step 1: Set password aging for a user
+
+sudo chage -M 90 -m 7 -W 14 sarah
+Step 2: View password aging information
+
+sudo chage -l sarah
+Step 3: Set account expiration date
+
+sudo usermod -e 2024-12-31 david
+Step 4: Check account status
+
+sudo chage -l david
+Subtask 4.3: Bulk User Operations
+Step 1: Create a script for bulk user creation
+
+cat > create_users.sh << 'EOF'
+#!/bin/bash
+users=("intern1" "intern2" "intern3")
+for user in "${users[@]}"; do
+    sudo useradd -m -G users -s /bin/bash "$user"
+    echo "Created user: $user"
+done
+EOF
+Step 2: Make script executable and run it
+
+chmod +x create_users.sh
+./create_users.sh
+Step 3: Verify bulk creation
+
+grep -E "(intern1|intern2|intern3)" /etc/passwd
+Step 4: Set temporary passwords for interns
+
+for user in intern1 intern2 intern3; do
+    echo "$user:temp123" | sudo chpasswd
+    sudo chage -d 0 "$user"  # Force password change on first login
+done
+Task 5: Security and Best Practices
+Subtask 5.1: Implementing Security Measures
+Step 1: Check for users with empty passwords
+
+sudo awk -F: '($2 == "") {print $1}' /etc/shadow
+Step 2: Find users with UID 0 (root privileges)
+
+awk -F: '($3 == 0) {print $1}' /etc/passwd
+Step 3: List users with login shells
+
+grep -E "(bash|zsh|sh)$" /etc/passwd
+Step 4: Check for duplicate UIDs
+
+cut -d: -f3 /etc/passwd | sort | uniq -d
+Subtask 5.2: Monitoring and Auditing
+Step 1: Check last login information
+
+lastlog | head -10
+Step 2: View currently logged in users
+
+who
+w
+Step 3: Check user login history
+
+last | head -10
+Step 4: Monitor failed login attempts
+
+sudo grep "Failed password" /var/log/auth.log | tail -5 || echo "No recent failed attempts"
+Task 6: Cleanup and Verification
+Subtask 6.1: System Cleanup
+Step 1: Remove test users
+
+for user in alice bob carol sarah david lisa intern1 intern2 intern3; do
+    sudo userdel -r "$user" 2>/dev/null && echo "Removed user: $user"
+done
+Step 2: Remove test groups
+
+for group in webdev database devops managers; do
+    sudo groupdel "$group" 2>/dev/null && echo "Removed group: $group"
+done
+Step 3: Clean up test files
+
+rm -f create_users.sh
+sudo rm -rf /opt/projects
+Subtask 6.2: Final Verification
+Step 1: Verify system state
+
+echo "Current users with login shells:"
+grep -E "(bash|zsh|sh)$" /etc/passwd | cut -d: -f1
+Step 2: Check remaining custom groups
+
+echo "Custom groups (GID > 1000):"
+awk -F: '($3 > 1000) {print $1}' /etc/group
+Step 3: Verify jane user still exists (if created)
+
+id jane 2>/dev/null && echo "Jane user exists" || echo "Jane user removed"
+Troubleshooting Common Issues
+Issue 1: Permission Denied Errors
+Problem: Cannot create users or groups Solution: Ensure you're using sudo with administrative commands
+
+sudo useradd username
+Issue 2: User Already Exists
+Problem: useradd reports user already exists Solution: Check existing users and use different username
+
+grep username /etc/passwd
+Issue 3: Cannot Delete Group
+Problem: groupdel fails because group is in use Solution: Remove users from group first or change their primary group
+
+sudo usermod -g users username
+sudo groupdel groupname
+Issue 4: Home Directory Not Created
+Problem: User created but no home directory Solution: Use -m flag with useradd or create manually
+
+sudo useradd -m username
+# or
+sudo mkdir /home/username
+sudo chown username:username /home/username
+Conclusion
+In this comprehensive lab, you have successfully learned and practiced essential Linux user and group management skills. You have accomplished the following:
+
+Key Achievements:
+
+Mastered user account creation, modification, and deletion using useradd, usermod, and userdel
+Learned group management with groupadd, groupdel, and membership control
+Implemented security best practices for user account management
+Practiced real-world scenarios including team setup and bulk operations
+Developed troubleshooting skills for common user management issues
+Why This Matters: User and group management is fundamental to Linux system administration and security. These skills are essential for:
+
+Maintaining secure multi-user environments
+Implementing proper access controls
+Managing development teams and project resources
+Ensuring compliance with security policies
+Preparing for Linux certification exams
+Next Steps:
+
+Practice these commands in different scenarios
+Explore advanced topics like sudo configuration and PAM modules
+Learn about LDAP integration for enterprise environments
+Study file permissions and ACLs in conjunction with user management
+You now have the practical knowledge to manage users and groups effectively in any Linux environment, making you well-prepared for the Al Razzaq Linux Security & Administration Specialist certification and real-world system administration tasks.
