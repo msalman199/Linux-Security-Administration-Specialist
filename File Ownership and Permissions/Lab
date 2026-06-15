@@ -1,0 +1,405 @@
+ File Ownership and Permissions
+Objectives
+By the end of this lab, students will be able to:
+
+Understand Linux file permission concepts and numeric notation
+Use chmod command to modify file and directory permissions
+Use chown command to change file ownership and group ownership
+Configure and apply umask settings to control default permissions
+Implement Access Control Lists (ACLs) for advanced permission management
+Troubleshoot common permission-related issues in Linux systems
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of Linux command line interface
+Knowledge of file system navigation using commands like ls, cd, and pwd
+Familiarity with creating files and directories using touch and mkdir
+Understanding of users and groups in Linux systems
+Access to a Linux terminal with sudo privileges
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Lab Environment Setup
+Before beginning the main tasks, let's prepare our lab environment:
+
+# Create a dedicated lab directory
+mkdir ~/lab4_permissions
+cd ~/lab4_permissions
+
+# Create test files and directories
+touch file1.txt file2.txt secret.txt
+mkdir testdir1 testdir2
+echo "This is a test file" > file1.txt
+echo "Confidential data" > secret.txt
+
+# Create a test script
+cat > test_script.sh << 'EOF'
+#!/bin/bash
+echo "Hello from test script!"
+date
+EOF
+
+# Display current directory structure
+ls -la
+Task 1: Change File Permissions with chmod
+Understanding Permission Basics
+Linux file permissions consist of three types of access for three categories of users:
+
+Read (r): Permission to view file contents or list directory contents
+Write (w): Permission to modify file contents or create/delete files in directory
+Execute (x): Permission to run file as program or access directory
+The three categories of users are:
+
+Owner (u): The user who owns the file
+Group (g): Users belonging to the file's group
+Others (o): All other users on the system
+Subtask 1.1: View Current Permissions
+# Display detailed file permissions
+ls -l
+
+# Display permissions in numeric format
+stat -c "%a %n" *
+
+# Understand the permission format
+echo "Permission format explanation:"
+echo "drwxrwxrwx = directory with full permissions"
+echo "-rw-r--r-- = regular file with read/write for owner, read for group and others"
+Subtask 1.2: Using Symbolic Mode with chmod
+# Add execute permission for owner
+chmod u+x test_script.sh
+
+# Remove write permission for group and others
+chmod go-w file1.txt
+
+# Set specific permissions using symbolic notation
+chmod u=rw,g=r,o=r file2.txt
+
+# Add read and execute permissions for all users to directory
+chmod a+rx testdir1
+
+# Verify changes
+ls -l
+Subtask 1.3: Using Numeric Mode with chmod
+# Set permissions using octal notation
+# 755 = rwxr-xr-x (owner: rwx, group: r-x, others: r-x)
+chmod 755 test_script.sh
+
+# 644 = rw-r--r-- (owner: rw-, group: r--, others: r--)
+chmod 644 file1.txt
+
+# 600 = rw------- (owner: rw-, group: ---, others: ---)
+chmod 600 secret.txt
+
+# 777 = rwxrwxrwx (full permissions for all)
+chmod 777 testdir2
+
+# Verify the changes
+ls -l
+stat -c "%a %n" *
+Subtask 1.4: Recursive Permission Changes
+# Create subdirectories and files for testing
+mkdir -p testdir1/subdir1/subdir2
+touch testdir1/file_in_dir.txt
+touch testdir1/subdir1/nested_file.txt
+
+# Apply permissions recursively
+chmod -R 755 testdir1
+
+# Verify recursive changes
+find testdir1 -exec ls -ld {} \;
+Task 2: Set File Ownership with chown
+Understanding Ownership Concepts
+Every file and directory in Linux has:
+
+Owner: A specific user account
+Group: A specific group that can access the file
+Subtask 2.1: View Current Ownership
+# Display current ownership information
+ls -l
+
+# Show detailed ownership with user and group IDs
+ls -n
+
+# Display current user and group information
+whoami
+groups
+id
+Subtask 2.2: Create Test Users and Groups
+# Create test group (requires sudo)
+sudo groupadd testgroup
+
+# Add current user to the test group
+sudo usermod -a -G testgroup $USER
+
+# Verify group membership
+groups $USER
+Subtask 2.3: Change File Ownership
+# Change group ownership of a file
+sudo chown :testgroup file1.txt
+
+# Change both user and group ownership (if you have another user)
+# Note: This example uses the current user
+sudo chown $USER:testgroup file2.txt
+
+# Change ownership recursively
+sudo chown -R $USER:testgroup testdir1
+
+# Verify ownership changes
+ls -l
+ls -ld testdir1
+Subtask 2.4: Using chgrp Command
+# Change group ownership using chgrp
+sudo chgrp testgroup secret.txt
+
+# Change group ownership recursively
+sudo chgrp -R testgroup testdir2
+
+# Verify changes
+ls -l
+Task 3: Practice umask and ACL Configurations
+Subtask 3.1: Understanding and Configuring umask
+# Display current umask value
+umask
+
+# Display umask in symbolic format
+umask -S
+
+# Create a test file with current umask
+touch umask_test1.txt
+ls -l umask_test1.txt
+
+# Change umask to be more restrictive
+umask 077
+
+# Create another test file
+touch umask_test2.txt
+ls -l umask_test2.txt
+
+# Change umask to be less restrictive
+umask 022
+
+# Create third test file
+touch umask_test3.txt
+ls -l umask_test3.txt
+
+# Compare the three files
+echo "Comparing files created with different umask values:"
+ls -l umask_test*.txt
+Subtask 3.2: Permanent umask Configuration
+# View current umask setting in profile
+echo "Current umask in .bashrc:"
+grep -n umask ~/.bashrc || echo "No umask found in .bashrc"
+
+# Add custom umask to .bashrc (backup first)
+cp ~/.bashrc ~/.bashrc.backup
+
+# Add umask setting
+echo "" >> ~/.bashrc
+echo "# Custom umask setting for lab" >> ~/.bashrc
+echo "umask 027" >> ~/.bashrc
+
+# Verify the addition
+tail -3 ~/.bashrc
+Subtask 3.3: Working with Access Control Lists (ACLs)
+# Check if ACL is supported on the filesystem
+getfacl --version
+
+# Create test files for ACL demonstration
+touch acl_test1.txt acl_test2.txt
+echo "ACL test content" > acl_test1.txt
+
+# View current ACL
+getfacl acl_test1.txt
+
+# Set ACL permissions for specific user
+setfacl -m u:$USER:rw acl_test1.txt
+
+# Set ACL permissions for group
+setfacl -m g:testgroup:r acl_test1.txt
+
+# Set default ACL for directory
+mkdir acl_testdir
+setfacl -d -m u:$USER:rwx acl_testdir
+setfacl -d -m g:testgroup:rx acl_testdir
+
+# View ACL settings
+getfacl acl_test1.txt
+getfacl acl_testdir
+
+# Create file in directory with default ACL
+touch acl_testdir/inherited_file.txt
+getfacl acl_testdir/inherited_file.txt
+Subtask 3.4: Advanced ACL Operations
+# Remove specific ACL entry
+setfacl -x u:$USER acl_test1.txt
+
+# Remove all ACL entries
+setfacl -b acl_test2.txt
+
+# Copy ACL from one file to another
+setfacl -m u:$USER:rw acl_test2.txt
+getfacl acl_test2.txt | setfacl --set-file=- acl_test1.txt
+
+# Verify ACL copy
+getfacl acl_test1.txt
+getfacl acl_test2.txt
+
+# Set ACL with mask
+setfacl -m m:r acl_test1.txt
+getfacl acl_test1.txt
+Practical Scenarios and Troubleshooting
+Scenario 1: Web Server File Permissions
+# Create a mock web directory structure
+mkdir -p ~/webserver/{public_html,logs,config}
+touch ~/webserver/public_html/index.html
+touch ~/webserver/logs/access.log
+touch ~/webserver/config/server.conf
+
+# Set appropriate permissions for web server
+chmod 755 ~/webserver
+chmod 755 ~/webserver/public_html
+chmod 644 ~/webserver/public_html/index.html
+chmod 755 ~/webserver/logs
+chmod 644 ~/webserver/logs/access.log
+chmod 700 ~/webserver/config
+chmod 600 ~/webserver/config/server.conf
+
+# Verify the setup
+find ~/webserver -exec ls -ld {} \;
+Scenario 2: Shared Directory Setup
+# Create shared directory
+mkdir ~/shared_project
+chmod 775 ~/shared_project
+sudo chgrp testgroup ~/shared_project
+
+# Set sticky bit for shared directory
+chmod +t ~/shared_project
+
+# Set SGID bit for group inheritance
+chmod g+s ~/shared_project
+
+# Verify special permissions
+ls -ld ~/shared_project
+
+# Test file creation in shared directory
+touch ~/shared_project/team_file.txt
+ls -l ~/shared_project/
+Common Troubleshooting Commands
+# Find files with specific permissions
+find ~/lab4_permissions -perm 644
+
+# Find files owned by specific user
+find ~/lab4_permissions -user $USER
+
+# Find files with SUID/SGID bits set
+find ~/lab4_permissions -perm /6000
+
+# Check for files with no group or user
+find ~/lab4_permissions -nouser -o -nogroup
+
+# Display files with ACLs
+find ~/lab4_permissions -exec getfacl {} \; 2>/dev/null | grep -l "user::"
+Verification and Testing
+Test Script Creation
+# Create comprehensive test script
+cat > permission_test.sh << 'EOF'
+#!/bin/bash
+
+echo "=== File Permissions Lab Verification ==="
+echo
+
+echo "1. Testing chmod functionality:"
+ls -l file*.txt test_script.sh
+
+echo
+echo "2. Testing ownership changes:"
+ls -l | grep testgroup
+
+echo
+echo "3. Testing umask effects:"
+ls -l umask_test*.txt
+
+echo
+echo "4. Testing ACL functionality:"
+getfacl acl_test1.txt 2>/dev/null | head -10
+
+echo
+echo "5. Testing special permissions:"
+ls -ld ~/shared_project 2>/dev/null
+
+echo
+echo "6. Current umask setting:"
+umask
+
+echo
+echo "=== Verification Complete ==="
+EOF
+
+chmod +x permission_test.sh
+./permission_test.sh
+Lab Summary and Cleanup
+Summary of Accomplishments
+# Display summary of what was learned
+cat << 'EOF'
+
+=== Lab 4 Summary ===
+
+You have successfully completed the following tasks:
+
+1. CHMOD Operations:
+   - Used symbolic notation (u+x, g-w, o=r)
+   - Applied numeric notation (755, 644, 600)
+   - Performed recursive permission changes
+
+2. CHOWN Operations:
+   - Changed file and directory ownership
+   - Modified group ownership
+   - Applied ownership changes recursively
+
+3. UMASK Configuration:
+   - Understood default permission calculation
+   - Modified umask values temporarily
+   - Configured permanent umask settings
+
+4. ACL Implementation:
+   - Set user and group ACLs
+   - Configured default ACLs for directories
+   - Managed ACL inheritance and masks
+
+5. Practical Applications:
+   - Web server permission setup
+   - Shared directory configuration
+   - Special permission bits (sticky, SUID, SGID)
+
+EOF
+Optional Cleanup
+# Clean up lab files (optional)
+read -p "Do you want to clean up lab files? (y/n): " cleanup
+if [[ $cleanup == "y" || $cleanup == "Y" ]]; then
+    cd ~
+    rm -rf ~/lab4_permissions
+    rm -rf ~/webserver
+    rm -rf ~/shared_project
+    
+    # Restore original .bashrc
+    if [[ -f ~/.bashrc.backup ]]; then
+        mv ~/.bashrc.backup ~/.bashrc
+    fi
+    
+    # Remove test group (requires sudo)
+    sudo groupdel testgroup 2>/dev/null
+    
+    echo "Lab cleanup completed."
+else
+    echo "Lab files preserved for further practice."
+fi
+Conclusion
+In this comprehensive lab, you have mastered the fundamental concepts of Linux file ownership and permissions. You learned how to:
+
+Control access to files and directories using chmod with both symbolic and numeric notation
+Manage ownership of files and directories using chown and chgrp commands
+Configure default permissions using umask settings for enhanced security
+Implement advanced access control using ACLs for granular permission management
+These skills are essential for Linux system administration and security. Proper file permissions protect sensitive data, ensure system stability, and maintain the principle of least privilege. The knowledge gained in this lab directly applies to real-world scenarios such as web server configuration, database security, and multi-user system management.
+
+Understanding file ownership and permissions is crucial for the Al Razzaq Linux Security & Administration Specialist certification and forms the foundation for advanced Linux security topics. Continue practicing these concepts in different scenarios to build expertise in Linux system administration.
