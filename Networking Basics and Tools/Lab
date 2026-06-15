@@ -1,0 +1,432 @@
+Networking Basics and Tools
+Objectives
+By the end of this lab, students will be able to:
+
+Use essential Linux networking commands including ifconfig, ip, netstat, and ss
+Configure and manage network interfaces on Linux systems
+Test network connectivity using ping and traceroute commands
+Understand network interface states and configurations
+Analyze network connections and listening services
+Troubleshoot basic network connectivity issues
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Linux command-line knowledge
+Understanding of file permissions and text editors
+Familiarity with the terminal environment
+Basic networking concepts (IP addresses, ports, protocols)
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Lab Environment Setup
+Your cloud machine comes with all necessary networking tools pre-installed. You will work entirely on a single Linux machine throughout this lab.
+
+Task 1: Understanding Network Interface Management
+Subtask 1.1: Using ifconfig Command
+The ifconfig command is a traditional tool for configuring and displaying network interface information.
+
+Step 1: Open your terminal and check all network interfaces
+
+ifconfig
+Step 2: Display only active interfaces
+
+ifconfig -a
+Step 3: Check a specific interface (usually eth0 or enp0s3)
+
+ifconfig eth0
+If eth0 doesn't exist, use:
+
+ip link show
+Then use the interface name shown (e.g., enp0s3, ens33).
+
+Step 4: Display interface statistics
+
+ifconfig eth0 | grep -E "(RX|TX)"
+Subtask 1.2: Using the Modern ip Command
+The ip command is the modern replacement for ifconfig and provides more functionality.
+
+Step 1: Display all network interfaces
+
+ip link show
+Step 2: Show IP addresses assigned to interfaces
+
+ip addr show
+Step 3: Display routing table
+
+ip route show
+Step 4: Show detailed interface information
+
+ip -s link show
+Step 5: Display only IPv4 addresses
+
+ip -4 addr show
+Subtask 1.3: Comparing ifconfig and ip Commands
+Create a comparison script to see the differences:
+
+nano network_comparison.sh
+Add the following content:
+
+#!/bin/bash
+
+echo "=== Network Interface Comparison ==="
+echo
+echo "--- Using ifconfig ---"
+ifconfig | head -10
+echo
+echo "--- Using ip addr ---"
+ip addr show | head -10
+echo
+echo "--- Routing Information ---"
+echo "ifconfig route (use route command):"
+route -n | head -5
+echo
+echo "ip route:"
+ip route show
+Make it executable and run:
+
+chmod +x network_comparison.sh
+./network_comparison.sh
+Task 2: Network Connection Analysis
+Subtask 2.1: Using netstat Command
+The netstat command displays network connections, routing tables, and interface statistics.
+
+Step 1: Display all active connections
+
+netstat -a
+Step 2: Show only listening ports
+
+netstat -l
+Step 3: Display TCP connections with process information
+
+netstat -tlnp
+Step 4: Show UDP connections
+
+netstat -ulnp
+Step 5: Display routing table using netstat
+
+netstat -rn
+Subtask 2.2: Using the Modern ss Command
+The ss command is the modern replacement for netstat with better performance.
+
+Step 1: Display all socket connections
+
+ss -a
+Step 2: Show listening sockets
+
+ss -l
+Step 3: Display TCP sockets with process information
+
+ss -tlnp
+Step 4: Show UDP sockets
+
+ss -ulnp
+Step 5: Display socket statistics
+
+ss -s
+Subtask 2.3: Creating a Network Monitoring Script
+Create a comprehensive network monitoring script:
+
+nano network_monitor.sh
+Add the following content:
+
+#!/bin/bash
+
+echo "=== Network Monitoring Report ==="
+echo "Generated on: $(date)"
+echo
+
+echo "--- Active Network Interfaces ---"
+ip link show | grep -E "^[0-9]+:" | awk '{print $2}' | sed 's/://'
+echo
+
+echo "--- IP Address Configuration ---"
+ip addr show | grep -E "inet " | awk '{print $2, $NF}'
+echo
+
+echo "--- Listening Services ---"
+echo "TCP Services:"
+ss -tlnp | grep LISTEN | head -5
+echo
+echo "UDP Services:"
+ss -ulnp | head -5
+echo
+
+echo "--- Network Statistics ---"
+ss -s
+echo
+
+echo "--- Routing Table ---"
+ip route show
+Make it executable and run:
+
+chmod +x network_monitor.sh
+./network_monitor.sh
+Task 3: Network Interface Configuration
+Subtask 3.1: Viewing Current Configuration
+Step 1: Check current network configuration
+
+ip addr show
+Step 2: View current routing configuration
+
+ip route show
+Step 3: Check DNS configuration
+
+cat /etc/resolv.conf
+Subtask 3.2: Temporary Interface Configuration
+Note: These changes are temporary and will be lost after reboot.
+
+Step 1: Add a secondary IP address to an interface (replace eth0 with your interface name)
+
+sudo ip addr add 192.168.100.10/24 dev eth0
+Step 2: Verify the new IP address
+
+ip addr show eth0
+Step 3: Remove the secondary IP address
+
+sudo ip addr del 192.168.100.10/24 dev eth0
+Step 4: Verify removal
+
+ip addr show eth0
+Subtask 3.3: Interface State Management
+Step 1: Check interface state
+
+ip link show eth0
+Step 2: Bring interface down (be careful with this on remote systems)
+
+sudo ip link set eth0 down
+Step 3: Bring interface back up
+
+sudo ip link set eth0 up
+Step 4: Verify interface state
+
+ip link show eth0
+Task 4: Network Connectivity Testing
+Subtask 4.1: Using ping Command
+Step 1: Test connectivity to localhost
+
+ping -c 4 127.0.0.1
+Step 2: Test connectivity to your default gateway
+
+ping -c 4 $(ip route show default | awk '{print $3}')
+Step 3: Test connectivity to a public DNS server
+
+ping -c 4 8.8.8.8
+Step 4: Test connectivity with hostname resolution
+
+ping -c 4 google.com
+Step 5: Continuous ping with timestamp
+
+ping -D google.com
+Press Ctrl+C to stop after a few seconds.
+
+Subtask 4.2: Using traceroute Command
+Step 1: Install traceroute if not available
+
+sudo apt update && sudo apt install traceroute -y
+Or on Red Hat-based systems:
+
+sudo yum install traceroute -y
+Step 2: Trace route to a public server
+
+traceroute google.com
+Step 3: Trace route with IP addresses only
+
+traceroute -n google.com
+Step 4: Trace route to your default gateway
+
+traceroute $(ip route show default | awk '{print $3}')
+Subtask 4.3: Creating a Connectivity Test Script
+Create a comprehensive connectivity testing script:
+
+nano connectivity_test.sh
+Add the following content:
+
+#!/bin/bash
+
+echo "=== Network Connectivity Test ==="
+echo "Test started at: $(date)"
+echo
+
+# Test localhost
+echo "--- Testing Localhost ---"
+if ping -c 2 127.0.0.1 > /dev/null 2>&1; then
+    echo "✓ Localhost connectivity: OK"
+else
+    echo "✗ Localhost connectivity: FAILED"
+fi
+
+# Test default gateway
+GATEWAY=$(ip route show default | awk '{print $3}')
+if [ ! -z "$GATEWAY" ]; then
+    echo "--- Testing Default Gateway ($GATEWAY) ---"
+    if ping -c 2 $GATEWAY > /dev/null 2>&1; then
+        echo "✓ Gateway connectivity: OK"
+    else
+        echo "✗ Gateway connectivity: FAILED"
+    fi
+else
+    echo "✗ No default gateway found"
+fi
+
+# Test DNS
+echo "--- Testing DNS Resolution ---"
+if ping -c 2 google.com > /dev/null 2>&1; then
+    echo "✓ DNS resolution: OK"
+else
+    echo "✗ DNS resolution: FAILED"
+fi
+
+# Test external connectivity
+echo "--- Testing External Connectivity ---"
+if ping -c 2 8.8.8.8 > /dev/null 2>&1; then
+    echo "✓ External connectivity: OK"
+else
+    echo "✗ External connectivity: FAILED"
+fi
+
+echo
+echo "Test completed at: $(date)"
+Make it executable and run:
+
+chmod +x connectivity_test.sh
+./connectivity_test.sh
+Task 5: Advanced Network Analysis
+Subtask 5.1: Port Scanning and Service Detection
+Step 1: Check what services are listening on your system
+
+ss -tlnp | grep LISTEN
+Step 2: Check for specific ports
+
+ss -tlnp | grep :22    # SSH
+ss -tlnp | grep :80    # HTTP
+ss -tlnp | grep :443   # HTTPS
+Step 3: Use netcat to test port connectivity
+
+# Install netcat if needed
+sudo apt install netcat -y
+
+# Test if a port is open (example: SSH on localhost)
+nc -zv localhost 22
+Subtask 5.2: Network Interface Statistics
+Step 1: Monitor network interface statistics
+
+watch -n 2 'cat /proc/net/dev'
+Press Ctrl+C to stop after observing for a few seconds.
+
+Step 2: Display detailed interface statistics
+
+ip -s link show
+Step 3: Monitor real-time network activity
+
+# Install iftop if available
+sudo apt install iftop -y 2>/dev/null || echo "iftop not available, using alternative"
+
+# Alternative: use ss to monitor connections
+watch -n 2 'ss -tuln | head -10'
+Subtask 5.3: Creating a Network Diagnostic Script
+Create a comprehensive diagnostic script:
+
+nano network_diagnostic.sh
+Add the following content:
+
+#!/bin/bash
+
+echo "=== Complete Network Diagnostic Report ==="
+echo "Generated: $(date)"
+echo "Hostname: $(hostname)"
+echo "User: $(whoami)"
+echo
+
+echo "--- System Network Configuration ---"
+echo "Kernel version: $(uname -r)"
+echo "Network interfaces:"
+ip link show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+echo
+
+echo "--- IP Configuration ---"
+ip addr show | grep -E "inet " | while read line; do
+    echo "  $line"
+done
+echo
+
+echo "--- Routing Information ---"
+echo "Default gateway: $(ip route show default | awk '{print $3}')"
+echo "Routing table:"
+ip route show | while read line; do
+    echo "  $line"
+done
+echo
+
+echo "--- DNS Configuration ---"
+echo "DNS servers:"
+grep nameserver /etc/resolv.conf | while read line; do
+    echo "  $line"
+done
+echo
+
+echo "--- Active Connections ---"
+echo "Listening TCP ports:"
+ss -tlnp | grep LISTEN | head -5 | while read line; do
+    echo "  $line"
+done
+echo
+
+echo "--- Connectivity Tests ---"
+echo -n "Localhost: "
+ping -c 1 127.0.0.1 > /dev/null 2>&1 && echo "OK" || echo "FAILED"
+
+GATEWAY=$(ip route show default | awk '{print $3}')
+if [ ! -z "$GATEWAY" ]; then
+    echo -n "Gateway ($GATEWAY): "
+    ping -c 1 $GATEWAY > /dev/null 2>&1 && echo "OK" || echo "FAILED"
+fi
+
+echo -n "External (8.8.8.8): "
+ping -c 1 8.8.8.8 > /dev/null 2>&1 && echo "OK" || echo "FAILED"
+
+echo -n "DNS Resolution: "
+ping -c 1 google.com > /dev/null 2>&1 && echo "OK" || echo "FAILED"
+
+echo
+echo "=== Diagnostic Complete ==="
+Make it executable and run:
+
+chmod +x network_diagnostic.sh
+./network_diagnostic.sh
+Troubleshooting Common Issues
+Issue 1: Command Not Found
+If you encounter "command not found" errors:
+
+# For ifconfig
+sudo apt install net-tools -y
+
+# For traceroute
+sudo apt install traceroute -y
+
+# For netcat
+sudo apt install netcat -y
+Issue 2: Permission Denied
+If you get permission errors when modifying network settings:
+
+# Always use sudo for network configuration changes
+sudo ip addr add 192.168.1.100/24 dev eth0
+Issue 3: Interface Names
+Different systems use different interface naming conventions:
+
+# Check your actual interface names
+ip link show
+Common names include: eth0, enp0s3, ens33, wlan0
+
+Key Concepts Summary
+ifconfig: Traditional tool for network interface configuration
+ip: Modern, more powerful replacement for ifconfig
+netstat: Traditional tool for displaying network connections
+ss: Modern, faster replacement for netstat
+ping: Tests basic connectivity using ICMP packets
+traceroute: Shows the path packets take to reach a destination
+Conclusion
+In this lab, you have successfully learned to use essential Linux networking tools and commands. You practiced with both traditional tools (ifconfig, netstat) and their modern replacements (ip, ss). You configured network interfaces, analyzed network connections, and tested connectivity using ping and traceroute.
+
+These skills are fundamental for Linux system administration and network troubleshooting. The ability to diagnose network issues, configure interfaces, and monitor network activity is crucial for maintaining reliable Linux systems in production environments.
+
+The scripts you created can be used as templates for ongoing network monitoring and diagnostics in real-world scenarios. Understanding these networking basics prepares you for more advanced topics in Linux security and administration.
