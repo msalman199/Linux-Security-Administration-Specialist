@@ -1,0 +1,361 @@
+SELinux and AppArmor Basics
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamental concepts of Mandatory Access Control (MAC) systems
+Configure and manage SELinux policies and enforcement modes
+Use essential SELinux commands including getenforce and setenforce
+Create and manage AppArmor security profiles
+Test and troubleshoot both SELinux and AppArmor configurations
+Implement practical security policies for common applications
+Analyze security logs and resolve policy violations
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Linux command-line knowledge
+Understanding of file permissions and ownership concepts
+Familiarity with text editors (nano, vim, or gedit)
+Knowledge of process management and system services
+Basic understanding of network services and applications
+Ready-to-Use Cloud Machines
+Al Nafi provides pre-configured Linux-based cloud machines for this lab. Simply click Start Lab to access your dedicated environment. No need to build your own virtual machine or install additional software - everything is ready to use.
+
+Lab Environment Setup
+Your cloud machine comes pre-installed with:
+
+CentOS/RHEL or Ubuntu Linux distribution
+SELinux tools and utilities
+AppArmor framework and utilities
+Common applications for testing security policies
+Administrative privileges for system configuration
+Task 1: Understanding and Configuring SELinux
+Subtask 1.1: Check Current SELinux Status
+First, let's examine the current SELinux configuration on your system.
+
+Step 1: Check the current SELinux enforcement mode
+
+getenforce
+Step 2: View detailed SELinux status information
+
+sestatus
+Step 3: Check SELinux configuration file
+
+cat /etc/selinux/config
+Expected Output Analysis:
+
+Enforcing: SELinux is active and blocking unauthorized actions
+Permissive: SELinux is active but only logging violations
+Disabled: SELinux is completely turned off
+Subtask 1.2: Managing SELinux Enforcement Modes
+Step 1: Switch SELinux to permissive mode temporarily
+
+sudo setenforce 0
+getenforce
+Step 2: Switch back to enforcing mode
+
+sudo setenforce 1
+getenforce
+Step 3: Make permanent changes to SELinux mode
+
+sudo nano /etc/selinux/config
+Modify the SELINUX line to your desired setting:
+
+SELINUX=enforcing
+Important Note: Permanent changes require a system reboot to take effect.
+
+Subtask 1.3: Working with SELinux Contexts
+Step 1: View SELinux contexts for files
+
+ls -Z /etc/passwd
+ls -Z /var/www/html/
+Step 2: View SELinux contexts for processes
+
+ps -eZ | grep httpd
+ps -eZ | grep sshd
+Step 3: View SELinux contexts for users
+
+id -Z
+Subtask 1.4: Managing SELinux File Contexts
+Step 1: Create a test directory and file
+
+sudo mkdir /test-selinux
+sudo touch /test-selinux/testfile.txt
+ls -Z /test-selinux/
+Step 2: Change SELinux context manually
+
+sudo chcon -t httpd_exec_t /test-selinux/testfile.txt
+ls -Z /test-selinux/
+Step 3: Restore default SELinux contexts
+
+sudo restorecon -R /test-selinux/
+ls -Z /test-selinux/
+Subtask 1.5: Working with SELinux Booleans
+Step 1: List all SELinux booleans
+
+getsebool -a | head -20
+Step 2: Check specific boolean status
+
+getsebool httpd_can_network_connect
+Step 3: Modify SELinux boolean temporarily
+
+sudo setsebool httpd_can_network_connect on
+getsebool httpd_can_network_connect
+Step 4: Make boolean change permanent
+
+sudo setsebool -P httpd_can_network_connect on
+Task 2: Setting Up AppArmor Profiles
+Subtask 2.1: Installing and Checking AppArmor Status
+Step 1: Install AppArmor utilities (if not already installed)
+
+# For Ubuntu/Debian systems
+sudo apt update
+sudo apt install apparmor-utils apparmor-profiles
+
+# For CentOS/RHEL systems (if available)
+sudo yum install apparmor-utils apparmor-profiles
+Step 2: Check AppArmor status
+
+sudo apparmor_status
+Step 3: List loaded AppArmor profiles
+
+sudo aa-status
+Subtask 2.2: Understanding AppArmor Profile Modes
+AppArmor profiles can operate in different modes:
+
+Enforce mode: Actively blocks unauthorized actions
+Complain mode: Logs violations but allows actions
+Unconfined: No restrictions applied
+Step 1: View current profile modes
+
+sudo aa-status | grep profiles
+Step 2: Switch a profile to complain mode
+
+sudo aa-complain /usr/bin/ping
+sudo aa-status | grep ping
+Step 3: Switch a profile back to enforce mode
+
+sudo aa-enforce /usr/bin/ping
+sudo aa-status | grep ping
+Subtask 2.3: Creating a Custom AppArmor Profile
+Step 1: Create a simple test application
+
+sudo nano /usr/local/bin/test-app.sh
+Add the following content:
+
+#!/bin/bash
+echo "Test application starting..."
+whoami
+date
+ls /home/
+echo "Test application finished."
+Step 2: Make the script executable
+
+sudo chmod +x /usr/local/bin/test-app.sh
+Step 3: Test the application without AppArmor
+
+/usr/local/bin/test-app.sh
+Step 4: Generate an AppArmor profile
+
+sudo aa-genprof /usr/local/bin/test-app.sh
+Follow the interactive prompts:
+
+Run the application in another terminal: /usr/local/bin/test-app.sh
+Return to the profile generation terminal
+Review and allow necessary permissions
+Save the profile
+Subtask 2.4: Editing AppArmor Profiles
+Step 1: Locate the created profile
+
+sudo ls /etc/apparmor.d/ | grep test-app
+Step 2: Edit the profile manually
+
+sudo nano /etc/apparmor.d/usr.local.bin.test-app.sh
+Step 3: Add specific permissions to the profile
+
+#include <tunables/global>
+
+/usr/local/bin/test-app.sh {
+  #include <abstractions/base>
+  #include <abstractions/bash>
+
+  /usr/local/bin/test-app.sh r,
+  /bin/bash ix,
+  /usr/bin/whoami ix,
+  /bin/date ix,
+  /bin/ls ix,
+  /home/ r,
+  /home/*/ r,
+}
+Step 4: Reload the profile
+
+sudo apparmor_parser -r /etc/apparmor.d/usr.local.bin.test-app.sh
+Subtask 2.5: Testing AppArmor Profile Restrictions
+Step 1: Test the application with the profile active
+
+/usr/local/bin/test-app.sh
+Step 2: Modify the script to perform unauthorized actions
+
+sudo nano /usr/local/bin/test-app.sh
+Add this line at the end:
+
+cat /etc/shadow
+Step 3: Test the restricted action
+
+/usr/local/bin/test-app.sh
+Step 4: Check AppArmor logs for violations
+
+sudo dmesg | grep -i apparmor | tail -10
+Or check system logs:
+
+sudo journalctl | grep -i apparmor | tail -10
+Task 3: Testing and Troubleshooting SELinux/AppArmor Configurations
+Subtask 3.1: SELinux Troubleshooting
+Step 1: Install SELinux troubleshooting tools
+
+sudo yum install setroubleshoot-server policycoreutils-python-utils
+# or for newer systems
+sudo dnf install setroubleshoot-server policycoreutils-python-utils
+Step 2: Create a scenario that triggers SELinux denial
+
+sudo mkdir /custom-web
+sudo echo "Test content" > /custom-web/index.html
+sudo chown -R apache:apache /custom-web/
+Step 3: Configure Apache to use the custom directory
+
+sudo nano /etc/httpd/conf.d/custom.conf
+Add:
+
+<Directory "/custom-web">
+    AllowOverride None
+    Require all granted
+</Directory>
+
+Alias /custom /custom-web
+Step 4: Restart Apache and test
+
+sudo systemctl restart httpd
+curl http://localhost/custom/
+Step 5: Check SELinux audit logs
+
+sudo ausearch -m AVC -ts recent
+Step 6: Use sealert to analyze denials
+
+sudo sealert -a /var/log/audit/audit.log
+Step 7: Fix the SELinux context issue
+
+sudo semanage fcontext -a -t httpd_exec_t "/custom-web(/.*)?"
+sudo restorecon -R /custom-web/
+Subtask 3.2: AppArmor Troubleshooting
+Step 1: Create a scenario that triggers AppArmor denial
+
+Modify your test application to access restricted files:
+
+sudo nano /usr/local/bin/test-app.sh
+Add:
+
+cat /etc/passwd
+Step 2: Run the application and observe the denial
+
+/usr/local/bin/test-app.sh
+Step 3: Check AppArmor logs
+
+sudo dmesg | grep -i apparmor | tail -5
+sudo journalctl -f | grep -i apparmor
+Step 4: Use aa-logprof to update the profile
+
+sudo aa-logprof
+Follow the interactive prompts to allow or deny the new access.
+
+Subtask 3.3: Performance Impact Analysis
+Step 1: Create a performance test script
+
+sudo nano /usr/local/bin/perf-test.sh
+Add:
+
+#!/bin/bash
+echo "Starting performance test..."
+time for i in {1..1000}; do
+    ls /etc/ > /dev/null 2>&1
+done
+echo "Performance test completed."
+Step 2: Make it executable
+
+sudo chmod +x /usr/local/bin/perf-test.sh
+Step 3: Test performance with SELinux enforcing
+
+sudo setenforce 1
+/usr/local/bin/perf-test.sh
+Step 4: Test performance with SELinux permissive
+
+sudo setenforce 0
+/usr/local/bin/perf-test.sh
+Step 5: Compare results and document findings
+
+Subtask 3.4: Creating Security Policy Documentation
+Step 1: Create a security policy document
+
+nano ~/security-policy-report.txt
+Add: ``` SELinux and AppArmor Security Policy Report
+System Information:
+
+Hostname: $(hostname)
+OS Version: $(cat /etc/os-release | grep PRETTY_NAME)
+SELinux Status: $(getenforce)
+AppArmor Status: $(sudo aa-status | head -1)
+SELinux Configuration:
+
+Current Mode: $(getenforce)
+Policy Type: $(sestatus | grep "Policy from config file")
+Active Booleans: $(getsebool -a | grep "on$" | wc -l)
+AppArmor Configuration:
+
+Loaded Profiles: $(sudo aa-status | grep "profiles are loaded" | cut -d' ' -f1)
+Enforce Mode: $(sudo aa-status | grep "profiles are in enforce mode" | cut -d' ' -f1)
+Complain Mode: $(sudo aa-status | grep "profiles are in complain mode" | cut -d' ' -f1)
+Recommendations:
+
+Keep SELinux in enforcing mode for production systems
+Regularly review and update AppArmor profiles
+Monitor security logs for policy violations
+Test applications thoroughly after policy changes
+
+**Step 2:** Generate the report
+
+```bash
+bash -c 'eval "echo \"$(cat ~/security-policy-report.txt)\""' > ~/final-security-report.txt
+cat ~/final-security-report.txt
+Common Troubleshooting Tips
+SELinux Issues
+Service fails to start: Check SELinux contexts and booleans
+File access denied: Verify file contexts with ls -Z
+Network connections blocked: Check network-related booleans
+Custom applications fail: Create or modify SELinux policies
+AppArmor Issues
+Application crashes: Check if profile is too restrictive
+Profile won't load: Verify syntax with apparmor_parser -p
+Logs not appearing: Ensure auditd service is running
+Profile conflicts: Check for overlapping profile rules
+General Security Framework Issues
+Performance degradation: Monitor system resources and optimize policies
+Application compatibility: Test thoroughly in development environments
+Policy maintenance: Keep profiles updated with application changes
+Documentation: Maintain clear records of all policy modifications
+Conclusion
+In this comprehensive lab, you have successfully:
+
+Mastered SELinux fundamentals by learning to check status, modify enforcement modes, and work with security contexts
+Configured SELinux policies using commands like getenforce, setenforce, and various context management tools
+Implemented AppArmor security profiles by creating custom profiles and understanding different operational modes
+Developed troubleshooting skills for both SELinux and AppArmor through practical scenarios and log analysis
+Created comprehensive security documentation to maintain and track your security implementations
+These Mandatory Access Control (MAC) systems are crucial for enterprise Linux security. SELinux provides fine-grained control over system resources and is widely used in Red Hat-based distributions, while AppArmor offers path-based security and is commonly found in Ubuntu and SUSE systems.
+
+The skills you've developed in this lab are essential for:
+
+System administrators managing secure Linux environments
+Security professionals implementing defense-in-depth strategies
+DevOps engineers securing containerized and cloud applications
+Compliance officers meeting regulatory security requirements
+Understanding both SELinux and AppArmor gives you flexibility to work with different Linux distributions and security requirements. These tools are fundamental components of modern Linux security architecture and are essential knowledge for the Al Razzaq Linux Security & Administration Specialist certification.
+
+Remember to always test security policies in development environments before implementing them in production, and maintain comprehensive documentation of all security configurations for future reference and compliance auditing.
