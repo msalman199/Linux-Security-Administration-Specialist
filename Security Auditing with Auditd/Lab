@@ -1,0 +1,695 @@
+Security Auditing with Auditd
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamentals of Linux system auditing using auditd
+Install and configure the auditd service for comprehensive system monitoring
+Create and implement custom audit rules for monitoring sensitive files and directories
+Analyze audit logs to identify suspicious activities and security events
+Generate detailed audit reports for compliance and security analysis
+Troubleshoot common auditd configuration issues
+Prerequisites
+Before starting this lab, students should have:
+
+Basic knowledge of Linux command line operations
+Understanding of file permissions and ownership concepts
+Familiarity with system services and systemctl commands
+Basic knowledge of log file analysis
+Understanding of Linux file system structure
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or set up additional infrastructure.
+
+Lab Environment
+This lab runs entirely on a single Linux machine with the following specifications:
+
+Operating System: Ubuntu 20.04 LTS or CentOS 8
+Root or sudo access required
+Minimum 2GB RAM and 10GB disk space
+Network connectivity for package installation
+Task 1: Configure Auditd Rules for Monitoring Sensitive Files
+Subtask 1.1: Install and Enable Auditd Service
+First, we need to install the auditd package and ensure it is running properly.
+
+Step 1: Update the package repository and install auditd
+
+# Update package lists
+sudo apt update
+
+# Install auditd and related utilities
+sudo apt install auditd audispd-plugins -y
+Step 2: Start and enable the auditd service
+
+# Start the auditd service
+sudo systemctl start auditd
+
+# Enable auditd to start automatically at boot
+sudo systemctl enable auditd
+
+# Check the status of auditd service
+sudo systemctl status auditd
+Step 3: Verify auditd installation and configuration files
+
+# Check if audit daemon is running
+sudo auditctl -s
+
+# List current audit rules
+sudo auditctl -l
+
+# View main configuration file
+sudo cat /etc/audit/auditd.conf
+Subtask 1.2: Configure Basic Audit Rules
+Now we will create audit rules to monitor sensitive system files and directories.
+
+Step 1: Create backup of existing audit rules
+
+# Create backup directory
+sudo mkdir -p /etc/audit/backup
+
+# Backup current rules file
+sudo cp /etc/audit/rules.d/audit.rules /etc/audit/backup/audit.rules.backup.$(date +%Y%m%d)
+Step 2: Create custom audit rules file
+
+# Create a new rules file for our custom rules
+sudo nano /etc/audit/rules.d/custom-security.rules
+Add the following content to the file:
+
+# Custom Security Audit Rules
+
+# Monitor changes to passwd file
+-w /etc/passwd -p wa -k passwd_changes
+
+# Monitor changes to group file
+-w /etc/group -p wa -k group_changes
+
+# Monitor changes to shadow file
+-w /etc/shadow -p wa -k shadow_changes
+
+# Monitor changes to sudoers file
+-w /etc/sudoers -p wa -k sudoers_changes
+
+# Monitor SSH configuration changes
+-w /etc/ssh/sshd_config -p wa -k ssh_config_changes
+
+# Monitor login/logout events
+-w /var/log/lastlog -p wa -k login_events
+
+# Monitor failed login attempts
+-w /var/log/faillog -p wa -k failed_logins
+
+# Monitor system startup scripts
+-w /etc/init.d/ -p wa -k init_scripts
+
+# Monitor cron jobs
+-w /etc/cron.allow -p wa -k cron_changes
+-w /etc/cron.deny -p wa -k cron_changes
+-w /etc/cron.d/ -p wa -k cron_changes
+-w /etc/cron.daily/ -p wa -k cron_changes
+-w /etc/cron.hourly/ -p wa -k cron_changes
+-w /etc/cron.monthly/ -p wa -k cron_changes
+-w /etc/cron.weekly/ -p wa -k cron_changes
+-w /etc/crontab -p wa -k cron_changes
+
+# Monitor network configuration changes
+-w /etc/hosts -p wa -k network_changes
+-w /etc/network/ -p wa -k network_changes
+
+# Make the configuration immutable
+-e 2
+Step 3: Load the new audit rules
+
+# Reload audit rules
+sudo augenrules --load
+
+# Restart auditd service to apply changes
+sudo service auditd restart
+
+# Verify rules are loaded
+sudo auditctl -l
+Subtask 1.3: Monitor Specific Directories and Files
+Step 1: Create additional rules for monitoring user directories
+
+# Create rules for monitoring home directories
+sudo nano /etc/audit/rules.d/user-monitoring.rules
+Add the following content:
+
+# User Directory Monitoring Rules
+
+# Monitor /tmp directory for suspicious activities
+-w /tmp -p wa -k tmp_access
+
+# Monitor /var/tmp directory
+-w /var/tmp -p wa -k var_tmp_access
+
+# Monitor system binaries
+-w /bin -p wa -k system_binaries
+-w /sbin -p wa -k system_binaries
+-w /usr/bin -p wa -k system_binaries
+-w /usr/sbin -p wa -k system_binaries
+
+# Monitor library directories
+-w /lib -p wa -k system_libraries
+-w /lib64 -p wa -k system_libraries
+-w /usr/lib -p wa -k system_libraries
+
+# Monitor kernel modules
+-w /lib/modules -p wa -k kernel_modules
+Step 2: Apply the new rules
+
+# Reload all audit rules
+sudo augenrules --load
+
+# Restart auditd service
+sudo service auditd restart
+
+# Check total number of rules loaded
+sudo auditctl -l | wc -l
+Task 2: Analyze Audit Logs for Suspicious Activities
+Subtask 2.1: Generate Test Activities
+To demonstrate log analysis, we will generate some test activities that will be captured by our audit rules.
+
+Step 1: Create test activities for passwd file monitoring
+
+# Create a test user (this will trigger passwd file monitoring)
+sudo useradd testuser1
+
+# Modify the test user
+sudo usermod -c "Test User for Audit Demo" testuser1
+
+# Delete the test user
+sudo userdel testuser1
+Step 2: Create test activities for file system monitoring
+
+# Create test files in monitored directories
+sudo touch /tmp/suspicious_file.txt
+echo "test content" | sudo tee /tmp/suspicious_file.txt
+
+# Modify SSH configuration (backup first)
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+echo "# Test comment for audit" | sudo tee -a /etc/ssh/sshd_config
+
+# Restore SSH configuration
+sudo cp /etc/ssh/sshd_config.backup /etc/ssh/sshd_config
+Step 3: Create test cron job activities
+
+# Add a test cron job
+echo "0 2 * * * /bin/echo 'test cron job'" | sudo tee -a /etc/crontab
+
+# Remove the test cron job
+sudo sed -i '/test cron job/d' /etc/crontab
+Subtask 2.2: Search and Analyze Audit Logs
+Step 1: Use ausearch to find specific events
+
+# Search for passwd file changes
+sudo ausearch -k passwd_changes
+
+# Search for SSH configuration changes
+sudo ausearch -k ssh_config_changes
+
+# Search for cron-related changes
+sudo ausearch -k cron_changes
+
+# Search for events in the last hour
+sudo ausearch -ts recent
+Step 2: Generate detailed audit reports
+
+# Create a comprehensive audit report
+sudo aureport
+
+# Generate summary report for today
+sudo aureport --start today
+
+# Generate user activity report
+sudo aureport -u
+
+# Generate file access report
+sudo aureport -f
+
+# Generate authentication report
+sudo aureport -au
+Step 3: Analyze specific event types
+
+# Search for file access events
+sudo ausearch -m PATH
+
+# Search for user authentication events
+sudo ausearch -m USER_AUTH
+
+# Search for system call events
+sudo ausearch -m SYSCALL
+
+# Search for events by specific user
+sudo ausearch -ui 0  # root user events
+Subtask 2.3: Create Custom Log Analysis Scripts
+Step 1: Create a script for automated log analysis
+
+# Create analysis script
+nano audit_analyzer.sh
+Add the following content:
+
+#!/bin/bash
+
+# Audit Log Analysis Script
+# This script provides automated analysis of audit logs
+
+echo "=== Audit Log Analysis Report ==="
+echo "Generated on: $(date)"
+echo "=================================="
+
+echo ""
+echo "1. SYSTEM OVERVIEW:"
+echo "-------------------"
+sudo auditctl -s
+
+echo ""
+echo "2. RECENT PASSWD CHANGES:"
+echo "-------------------------"
+sudo ausearch -k passwd_changes -ts recent 2>/dev/null | grep -E "(type=|msg=)" | head -10
+
+echo ""
+echo "3. SSH CONFIGURATION CHANGES:"
+echo "-----------------------------"
+sudo ausearch -k ssh_config_changes -ts recent 2>/dev/null | grep -E "(type=|msg=)" | head -10
+
+echo ""
+echo "4. CRON JOB MODIFICATIONS:"
+echo "--------------------------"
+sudo ausearch -k cron_changes -ts recent 2>/dev/null | grep -E "(type=|msg=)" | head -10
+
+echo ""
+echo "5. TEMPORARY FILE ACCESS:"
+echo "-------------------------"
+sudo ausearch -k tmp_access -ts recent 2>/dev/null | grep -E "(type=|msg=)" | head -10
+
+echo ""
+echo "6. FAILED LOGIN ATTEMPTS:"
+echo "-------------------------"
+sudo ausearch -k failed_logins -ts recent 2>/dev/null | grep -E "(type=|msg=)" | head -10
+
+echo ""
+echo "7. SUMMARY STATISTICS:"
+echo "----------------------"
+echo "Total events today: $(sudo ausearch -ts today 2>/dev/null | wc -l)"
+echo "Unique users active: $(sudo aureport -u --start today 2>/dev/null | grep -v "^$" | wc -l)"
+echo "Files accessed: $(sudo aureport -f --start today 2>/dev/null | grep -v "^$" | wc -l)"
+
+echo ""
+echo "=== End of Report ==="
+Step 2: Make the script executable and run it
+
+# Make script executable
+chmod +x audit_analyzer.sh
+
+# Run the analysis script
+./audit_analyzer.sh
+Task 3: Create Custom Audit Rules
+Subtask 3.1: Design Application-Specific Audit Rules
+Step 1: Create rules for web server monitoring
+
+# Create web server audit rules
+sudo nano /etc/audit/rules.d/webserver-monitoring.rules
+Add the following content:
+
+# Web Server Security Monitoring Rules
+
+# Monitor Apache/Nginx configuration files
+-w /etc/apache2/ -p wa -k webserver_config
+-w /etc/nginx/ -p wa -k webserver_config
+
+# Monitor web root directories
+-w /var/www/ -p wa -k web_content
+
+# Monitor log directories
+-w /var/log/apache2/ -p wa -k webserver_logs
+-w /var/log/nginx/ -p wa -k webserver_logs
+
+# Monitor SSL certificates
+-w /etc/ssl/ -p wa -k ssl_certificates
+
+# Monitor PHP configuration
+-w /etc/php/ -p wa -k php_config
+Step 2: Create rules for database monitoring
+
+# Create database audit rules
+sudo nano /etc/audit/rules.d/database-monitoring.rules
+Add the following content:
+
+# Database Security Monitoring Rules
+
+# Monitor MySQL configuration
+-w /etc/mysql/ -p wa -k mysql_config
+
+# Monitor PostgreSQL configuration
+-w /etc/postgresql/ -p wa -k postgresql_config
+
+# Monitor database data directories
+-w /var/lib/mysql/ -p wa -k mysql_data
+-w /var/lib/postgresql/ -p wa -k postgresql_data
+
+# Monitor database logs
+-w /var/log/mysql/ -p wa -k mysql_logs
+-w /var/log/postgresql/ -p wa -k postgresql_logs
+Subtask 3.2: Implement Process and System Call Monitoring
+Step 1: Create rules for monitoring specific system calls
+
+# Create system call monitoring rules
+sudo nano /etc/audit/rules.d/syscall-monitoring.rules
+Add the following content:
+
+# System Call Monitoring Rules
+
+# Monitor file deletion attempts
+-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -k file_deletion
+-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -k file_deletion
+
+# Monitor file permission changes
+-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -k permission_changes
+-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -k permission_changes
+
+# Monitor file ownership changes
+-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -k ownership_changes
+-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -k ownership_changes
+
+# Monitor process execution
+-a always,exit -F arch=b64 -S execve -k process_execution
+-a always,exit -F arch=b32 -S execve -k process_execution
+
+# Monitor network connections
+-a always,exit -F arch=b64 -S socket -S connect -k network_connections
+-a always,exit -F arch=b32 -S socket -S connect -k network_connections
+Step 2: Create rules for monitoring privileged operations
+
+# Create privileged operations monitoring rules
+sudo nano /etc/audit/rules.d/privileged-operations.rules
+Add the following content:
+
+# Privileged Operations Monitoring Rules
+
+# Monitor sudo usage
+-w /usr/bin/sudo -p x -k sudo_usage
+
+# Monitor su usage
+-w /bin/su -p x -k su_usage
+
+# Monitor passwd command usage
+-w /usr/bin/passwd -p x -k passwd_usage
+
+# Monitor mount operations
+-a always,exit -F arch=b64 -S mount -k mount_operations
+-a always,exit -F arch=b32 -S mount -k mount_operations
+
+# Monitor module loading
+-w /sbin/insmod -p x -k module_loading
+-w /sbin/rmmod -p x -k module_loading
+-w /sbin/modprobe -p x -k module_loading
+
+# Monitor time changes
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time_changes
+-a always,exit -F arch=b32 -S adjtimex -S settimeofday -k time_changes
+Subtask 3.3: Test and Validate Custom Rules
+Step 1: Load all custom rules and verify
+
+# Load all audit rules
+sudo augenrules --load
+
+# Restart auditd service
+sudo service auditd restart
+
+# Display all loaded rules
+sudo auditctl -l
+
+# Count total rules
+echo "Total audit rules loaded: $(sudo auditctl -l | wc -l)"
+Step 2: Test the custom rules with sample activities
+
+# Test file deletion monitoring
+touch /tmp/test_delete_file.txt
+rm /tmp/test_delete_file.txt
+
+# Test permission changes
+touch /tmp/test_chmod_file.txt
+chmod 755 /tmp/test_chmod_file.txt
+rm /tmp/test_chmod_file.txt
+
+# Test ownership changes
+touch /tmp/test_chown_file.txt
+sudo chown root:root /tmp/test_chown_file.txt
+sudo rm /tmp/test_chown_file.txt
+
+# Test sudo usage
+sudo whoami
+
+# Test process execution
+/bin/ls /tmp
+Step 3: Verify that events are being captured
+
+# Check for file deletion events
+sudo ausearch -k file_deletion -ts recent
+
+# Check for permission change events
+sudo ausearch -k permission_changes -ts recent
+
+# Check for ownership change events
+sudo ausearch -k ownership_changes -ts recent
+
+# Check for sudo usage events
+sudo ausearch -k sudo_usage -ts recent
+
+# Check for process execution events
+sudo ausearch -k process_execution -ts recent | head -20
+Subtask 3.4: Create Automated Rule Management Script
+Step 1: Create a rule management script
+
+# Create rule management script
+nano audit_rule_manager.sh
+Add the following content:
+
+#!/bin/bash
+
+# Audit Rule Management Script
+# This script helps manage audit rules efficiently
+
+RULES_DIR="/etc/audit/rules.d"
+BACKUP_DIR="/etc/audit/backup"
+
+# Function to display menu
+show_menu() {
+    echo "=== Audit Rule Manager ==="
+    echo "1. List all active rules"
+    echo "2. Backup current rules"
+    echo "3. Load rules from file"
+    echo "4. Test rule syntax"
+    echo "5. Generate rule statistics"
+    echo "6. Search for specific rule"
+    echo "7. Exit"
+    echo "=========================="
+}
+
+# Function to list all rules
+list_rules() {
+    echo "Active Audit Rules:"
+    echo "==================="
+    sudo auditctl -l | nl
+    echo ""
+    echo "Total rules: $(sudo auditctl -l | wc -l)"
+}
+
+# Function to backup rules
+backup_rules() {
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    sudo mkdir -p $BACKUP_DIR
+    sudo cp -r $RULES_DIR/* $BACKUP_DIR/backup_$TIMESTAMP/
+    echo "Rules backed up to: $BACKUP_DIR/backup_$TIMESTAMP/"
+}
+
+# Function to load rules
+load_rules() {
+    echo "Loading audit rules..."
+    sudo augenrules --load
+    sudo service auditd restart
+    echo "Rules loaded successfully!"
+}
+
+# Function to test rule syntax
+test_syntax() {
+    echo "Testing audit rule syntax..."
+    sudo augenrules --check
+}
+
+# Function to generate statistics
+generate_stats() {
+    echo "Audit Rule Statistics:"
+    echo "====================="
+    echo "Total rule files: $(ls $RULES_DIR/*.rules 2>/dev/null | wc -l)"
+    echo "Total active rules: $(sudo auditctl -l | wc -l)"
+    echo "Watch rules: $(sudo auditctl -l | grep -c '^-w')"
+    echo "System call rules: $(sudo auditctl -l | grep -c '^-a')"
+    echo ""
+    echo "Rule categories:"
+    sudo auditctl -l | grep -o '\-k [^ ]*' | sort | uniq -c | sort -nr
+}
+
+# Function to search rules
+search_rules() {
+    read -p "Enter search term: " search_term
+    echo "Searching for rules containing: $search_term"
+    echo "============================================="
+    sudo auditctl -l | grep -i "$search_term" | nl
+}
+
+# Main menu loop
+while true; do
+    show_menu
+    read -p "Select an option (1-7): " choice
+    
+    case $choice in
+        1) list_rules ;;
+        2) backup_rules ;;
+        3) load_rules ;;
+        4) test_syntax ;;
+        5) generate_stats ;;
+        6) search_rules ;;
+        7) echo "Exiting..."; exit 0 ;;
+        *) echo "Invalid option. Please try again." ;;
+    esac
+    
+    echo ""
+    read -p "Press Enter to continue..."
+    clear
+done
+Step 2: Make the script executable and test it
+
+# Make script executable
+chmod +x audit_rule_manager.sh
+
+# Run the script
+./audit_rule_manager.sh
+Troubleshooting Common Issues
+Issue 1: Auditd Service Won't Start
+Problem: The auditd service fails to start or shows errors.
+
+Solution:
+
+# Check service status for detailed error messages
+sudo systemctl status auditd -l
+
+# Check audit configuration syntax
+sudo auditctl -R /etc/audit/rules.d/audit.rules
+
+# Check disk space (auditd requires adequate space)
+df -h /var/log/audit/
+
+# Reset audit rules if corrupted
+sudo auditctl -D
+sudo augenrules --load
+Issue 2: Too Many Audit Events
+Problem: System performance is impacted by excessive audit logging.
+
+Solution:
+
+# Check current audit rate
+sudo auditctl -s
+
+# Reduce audit rate temporarily
+sudo auditctl -r 100
+
+# Review and optimize rules to reduce noise
+sudo auditctl -l | grep -v "necessary_rules"
+
+# Consider excluding high-frequency, low-value events
+Issue 3: Missing Audit Events
+Problem: Expected events are not appearing in audit logs.
+
+Solution:
+
+# Verify rules are loaded correctly
+sudo auditctl -l | grep "expected_rule"
+
+# Check if audit daemon is running
+sudo systemctl status auditd
+
+# Verify log file permissions
+ls -la /var/log/audit/
+
+# Test rule with manual trigger
+# (perform action that should trigger the rule)
+Performance Optimization Tips
+Tip 1: Optimize Rule Efficiency
+# Use specific paths instead of wildcards when possible
+# Good: -w /etc/passwd -p wa -k passwd_changes
+# Avoid: -w /etc/* -p wa -k etc_changes
+
+# Combine related rules with appropriate keys
+# Group similar monitoring under common keys
+Tip 2: Manage Log Rotation
+# Configure log rotation in /etc/audit/auditd.conf
+sudo nano /etc/audit/auditd.conf
+
+# Key settings to adjust:
+# max_log_file = 50
+# num_logs = 10
+# max_log_file_action = rotate
+Tip 3: Monitor System Resources
+# Create monitoring script for audit performance
+nano audit_performance_monitor.sh
+Add the following content:
+
+#!/bin/bash
+
+echo "=== Audit Performance Monitor ==="
+echo "Audit daemon status:"
+sudo auditctl -s
+
+echo ""
+echo "Disk usage for audit logs:"
+du -sh /var/log/audit/
+
+echo ""
+echo "Current audit rate:"
+sudo auditctl -s | grep rate
+
+echo ""
+echo "Memory usage by auditd:"
+ps aux | grep auditd | grep -v grep
+Conclusion
+In this comprehensive lab, you have successfully implemented and configured a robust security auditing system using auditd on Linux. Here's what you accomplished:
+
+Key Achievements:
+
+Installed and Configured Auditd: You set up the audit daemon service and learned how to manage its configuration files effectively.
+
+Created Comprehensive Monitoring Rules: You implemented audit rules to monitor sensitive system files, user activities, and critical system changes including:
+
+Password and authentication files
+SSH configuration changes
+Cron job modifications
+System binary and library access
+Network configuration changes
+Developed Log Analysis Skills: You learned how to search, filter, and analyze audit logs using tools like ausearch and aureport to identify suspicious activities and generate meaningful security reports.
+
+Built Custom Audit Rules: You created specialized monitoring rules for:
+
+Web server security monitoring
+Database activity tracking
+System call monitoring
+Privileged operation detection
+Automated Management: You developed scripts for automated log analysis and rule management, making the auditing system more efficient and maintainable.
+
+Why This Matters:
+
+Security auditing with auditd is crucial for:
+
+Compliance Requirements: Meeting regulatory standards like PCI DSS, HIPAA, and SOX
+Incident Response: Providing detailed forensic information during security incidents
+Threat Detection: Identifying unauthorized access attempts and suspicious activities
+System Integrity: Monitoring changes to critical system files and configurations
+User Accountability: Tracking user actions for security and compliance purposes
+Real-World Applications:
+
+The skills you've developed in this lab are directly applicable to:
+
+Enterprise security monitoring
+Compliance auditing and reporting
+Forensic investigation support
+Proactive threat hunting
+System administration best practices
+You now have the knowledge and tools to implement comprehensive security auditing in production Linux environments, helping organizations maintain security posture and meet compliance requirements effectively.
