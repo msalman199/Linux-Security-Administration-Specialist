@@ -1,0 +1,482 @@
+Configuring SELinux for Security
+Objectives
+By the end of this lab, students will be able to:
+
+Understand SELinux fundamentals and security contexts
+Configure SELinux policies for file access control
+Troubleshoot SELinux denials using audit2allow
+Create and implement custom SELinux policies
+Secure system files using SELinux mandatory access controls
+Analyze SELinux logs and audit messages
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Linux command-line knowledge
+Understanding of file permissions and ownership
+Familiarity with system administration concepts
+Knowledge of text editors (vi/vim or nano)
+Basic understanding of security concepts
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines with SELinux pre-installed and configured. Simply click Start Lab to access your dedicated environment. No need to build your own VM or install additional software.
+
+Lab Environment Setup
+Your cloud machine comes with:
+
+CentOS/RHEL-based Linux distribution
+SELinux enabled and configured
+All necessary tools pre-installed
+Root access for administrative tasks
+Task 1: Configure SELinux Policies for File Access
+Subtask 1.1: Verify SELinux Status and Mode
+First, let's check the current SELinux status and understand the system configuration.
+
+# Check SELinux status
+sestatus
+
+# View current SELinux mode
+getenforce
+
+# Check SELinux configuration file
+cat /etc/selinux/config
+Expected Output Analysis:
+
+Enforcing: SELinux is active and blocking unauthorized actions
+Permissive: SELinux is active but only logging violations
+Disabled: SELinux is turned off
+Subtask 1.2: Understanding SELinux Contexts
+Learn how SELinux uses security contexts to control access.
+
+# View SELinux context of files in /etc
+ls -Z /etc/passwd /etc/shadow /etc/hosts
+
+# Check SELinux context of directories
+ls -dZ /var/www/html /home /tmp
+
+# View your current SELinux context
+id -Z
+Key Concepts:
+
+User: SELinux user identity
+Role: Defines what the user can do
+Type: Most important for file access control
+Level: Used for Multi-Level Security (MLS)
+Subtask 1.3: Create Test Files and Directories
+Set up a testing environment to practice SELinux configuration.
+
+# Create a test directory structure
+mkdir -p /opt/webtest/{public,private,logs}
+
+# Create test files
+echo "Public content" > /opt/webtest/public/index.html
+echo "Private data" > /opt/webtest/private/secret.txt
+echo "Log entry" > /opt/webtest/logs/access.log
+
+# Check default SELinux contexts
+ls -lZ /opt/webtest/
+ls -lZ /opt/webtest/public/
+ls -lZ /opt/webtest/private/
+Subtask 1.4: Configure File Contexts
+Apply appropriate SELinux contexts to secure different types of content.
+
+# Set web content context for public directory
+semanage fcontext -a -t httpd_exec_t "/opt/webtest/public(/.*)?"
+
+# Set admin home context for private directory
+semanage fcontext -a -t admin_home_t "/opt/webtest/private(/.*)?"
+
+# Set log file context for logs directory
+semanage fcontext -a -t httpd_log_t "/opt/webtest/logs(/.*)?"
+
+# Apply the contexts
+restorecon -Rv /opt/webtest/
+
+# Verify the changes
+ls -lZ /opt/webtest/
+ls -lZ /opt/webtest/public/
+ls -lZ /opt/webtest/private/
+ls -lZ /opt/webtest/logs/
+Subtask 1.5: Test File Access Controls
+Create a simple test to demonstrate SELinux access control.
+
+# Install Apache web server if not present
+yum install -y httpd
+
+# Start and enable Apache
+systemctl start httpd
+systemctl enable httpd
+
+# Create a symbolic link to test directory
+ln -s /opt/webtest/public /var/www/html/testsite
+
+# Test access through web server
+curl http://localhost/testsite/index.html
+
+# Check SELinux boolean settings for httpd
+getsebool -a | grep httpd | head -10
+Task 2: Troubleshoot SELinux Denials with audit2allow
+Subtask 2.1: Generate SELinux Denials
+Create scenarios that will trigger SELinux denials for learning purposes.
+
+# Create a script in wrong location
+cat > /tmp/test_script.sh << 'EOF'
+#!/bin/bash
+echo "Testing SELinux"
+date
+EOF
+
+chmod +x /tmp/test_script.sh
+
+# Try to execute from httpd context (this should fail)
+# First, let's create a CGI scenario
+mkdir -p /var/www/cgi-bin
+cp /tmp/test_script.sh /var/www/cgi-bin/
+
+# Check the context
+ls -lZ /var/www/cgi-bin/test_script.sh
+
+# This will likely cause SELinux denial
+# We'll check logs in next step
+Subtask 2.2: Monitor SELinux Audit Logs
+Learn to read and interpret SELinux denial messages.
+
+# Check recent SELinux denials
+ausearch -m AVC -ts recent
+
+# Alternative method using journalctl
+journalctl -t setroubleshoot --since="10 minutes ago"
+
+# Check SELinux alerts
+sealert -a /var/log/audit/audit.log
+
+# View last 20 SELinux related log entries
+grep "SELinux" /var/log/messages | tail -20
+Subtask 2.3: Use audit2allow for Policy Generation
+Transform SELinux denials into policy rules.
+
+# Generate policy from recent denials
+ausearch -m AVC -ts recent | audit2allow
+
+# Generate a complete policy module
+ausearch -m AVC -ts recent | audit2allow -M mypolicy
+
+# Examine the generated policy
+cat mypolicy.te
+
+# View the policy package
+ls -l mypolicy.*
+Subtask 2.4: Create and Test Custom Policy
+Implement a custom policy to resolve access issues.
+
+# Create a more comprehensive test scenario
+cat > /opt/custom_app.sh << 'EOF'
+#!/bin/bash
+# Custom application script
+echo "Custom app starting..."
+touch /var/log/custom_app.log
+echo "$(date): Application started" >> /var/log/custom_app.log
+echo "Custom app completed."
+EOF
+
+chmod +x /opt/custom_app.sh
+
+# Run the script to generate denials
+/opt/custom_app.sh
+
+# Check for new denials
+ausearch -m AVC -ts recent | tail -10
+
+# Generate policy for this specific application
+ausearch -m AVC -ts recent | audit2allow -M custom_app_policy
+
+# Review the generated policy
+cat custom_app_policy.te
+Subtask 2.5: Install and Test Custom Policy
+Apply the custom policy and verify it resolves the issues.
+
+# Install the custom policy module
+semodule -i custom_app_policy.pp
+
+# List installed policy modules
+semodule -l | grep custom
+
+# Test the application again
+/opt/custom_app.sh
+
+# Verify no new denials occurred
+ausearch -m AVC -ts recent | grep custom_app || echo "No denials found"
+
+# Check if log file was created successfully
+ls -lZ /var/log/custom_app.log
+cat /var/log/custom_app.log
+Task 3: Create Custom SELinux Policies
+Subtask 3.1: Design a Custom Application Policy
+Create a comprehensive policy for a custom application.
+
+# Create application directory structure
+mkdir -p /opt/myapp/{bin,config,data,logs}
+
+# Create application files
+cat > /opt/myapp/bin/myapp << 'EOF'
+#!/bin/bash
+# My Custom Application
+CONFIG_FILE="/opt/myapp/config/app.conf"
+DATA_DIR="/opt/myapp/data"
+LOG_FILE="/opt/myapp/logs/app.log"
+
+echo "$(date): Starting MyApp" >> $LOG_FILE
+echo "Reading config from $CONFIG_FILE" >> $LOG_FILE
+
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+    echo "$(date): Config loaded - Debug=$DEBUG" >> $LOG_FILE
+else
+    echo "$(date): No config file found" >> $LOG_FILE
+fi
+
+echo "$(date): Processing data in $DATA_DIR" >> $LOG_FILE
+ls "$DATA_DIR" >> $LOG_FILE 2>&1
+
+echo "$(date): MyApp completed" >> $LOG_FILE
+EOF
+
+chmod +x /opt/myapp/bin/myapp
+
+# Create configuration file
+cat > /opt/myapp/config/app.conf << 'EOF'
+DEBUG=true
+MAX_CONNECTIONS=100
+TIMEOUT=30
+EOF
+
+# Create sample data
+echo "Sample data file" > /opt/myapp/data/sample.txt
+Subtask 3.2: Define Custom SELinux Types
+Create specific SELinux types for the custom application.
+
+# Create policy source file
+cat > myapp_policy.te << 'EOF'
+policy_module(myapp_policy, 1.0)
+
+# Define custom types
+type myapp_exec_t;
+type myapp_config_t;
+type myapp_data_t;
+type myapp_log_t;
+type myapp_t;
+
+# File type declarations
+files_type(myapp_config_t)
+files_type(myapp_data_t)
+files_type(myapp_log_t)
+application_executable_file(myapp_exec_t)
+
+# Domain transition
+application_domain(myapp_t, myapp_exec_t)
+
+# Allow myapp to read its config files
+allow myapp_t myapp_config_t:file { read getattr open };
+
+# Allow myapp to read and write data files
+allow myapp_t myapp_data_t:file { read write create getattr open };
+allow myapp_t myapp_data_t:dir { read search getattr };
+
+# Allow myapp to write log files
+allow myapp_t myapp_log_t:file { write create append getattr open };
+allow myapp_t myapp_log_t:dir { write add_name };
+
+# Basic permissions
+allow myapp_t bin_t:file { execute read getattr open };
+allow myapp_t shell_exec_t:file { execute read getattr open };
+EOF
+
+# Create file context definitions
+cat > myapp_policy.fc << 'EOF'
+/opt/myapp/bin/myapp    --  gen_context(system_u:object_r:myapp_exec_t,s0)
+/opt/myapp/config(/.*)?     gen_context(system_u:object_r:myapp_config_t,s0)
+/opt/myapp/data(/.*)?       gen_context(system_u:object_r:myapp_data_t,s0)
+/opt/myapp/logs(/.*)?       gen_context(system_u:object_r:myapp_log_t,s0)
+EOF
+Subtask 3.3: Compile and Install Custom Policy
+Build and deploy the custom SELinux policy.
+
+# Compile the policy module
+make -f /usr/share/selinux/devel/Makefile myapp_policy.pp
+
+# Install the policy module
+semodule -i myapp_policy.pp
+
+# Verify installation
+semodule -l | grep myapp
+
+# Apply file contexts
+semanage fcontext -a -f -- -t myapp_exec_t "/opt/myapp/bin/myapp"
+semanage fcontext -a -t myapp_config_t "/opt/myapp/config(/.*)?"
+semanage fcontext -a -t myapp_data_t "/opt/myapp/data(/.*)?"
+semanage fcontext -a -t myapp_log_t "/opt/myapp/logs(/.*)?"
+
+# Restore contexts
+restorecon -Rv /opt/myapp/
+
+# Verify contexts
+ls -lZ /opt/myapp/bin/myapp
+ls -lZ /opt/myapp/config/
+ls -lZ /opt/myapp/data/
+ls -lZ /opt/myapp/logs/
+Subtask 3.4: Test Custom Policy
+Validate that the custom policy works correctly.
+
+# Test the application
+/opt/myapp/bin/myapp
+
+# Check for any denials
+ausearch -m AVC -ts recent | grep myapp || echo "No denials found"
+
+# Verify log file creation
+cat /opt/myapp/logs/app.log
+
+# Test file operations
+echo "New data entry" >> /opt/myapp/data/newfile.txt
+ls -lZ /opt/myapp/data/
+
+# Run application multiple times to test various operations
+for i in {1..3}; do
+    echo "Test run $i"
+    /opt/myapp/bin/myapp
+    sleep 1
+done
+
+# Check comprehensive log
+cat /opt/myapp/logs/app.log
+Subtask 3.5: Policy Refinement and Troubleshooting
+Improve and debug the custom policy based on testing results.
+
+# Check for any remaining denials
+ausearch -m AVC -ts recent
+
+# If denials exist, generate additional rules
+ausearch -m AVC -ts recent | audit2allow
+
+# Create an updated policy if needed
+ausearch -m AVC -ts recent | audit2allow -M myapp_policy_update
+
+# View the update
+cat myapp_policy_update.te
+
+# Install the update if necessary
+# semodule -i myapp_policy_update.pp
+
+# Verify policy status
+semodule -l | grep myapp
+
+# Test final functionality
+echo "Final test data" > /opt/myapp/data/final_test.txt
+/opt/myapp/bin/myapp
+
+# Confirm no denials
+ausearch -m AVC -ts recent | grep myapp || echo "Policy working correctly - no denials"
+Advanced SELinux Management
+Managing SELinux Booleans
+# List all SELinux booleans
+getsebool -a | head -20
+
+# Check specific boolean
+getsebool httpd_can_network_connect
+
+# Set boolean temporarily
+setsebool httpd_can_network_connect on
+
+# Set boolean permanently
+setsebool -P httpd_can_network_connect on
+
+# View boolean descriptions
+semanage boolean -l | grep httpd | head -5
+SELinux Port Management
+# List SELinux port assignments
+semanage port -l | grep http
+
+# Add custom port for HTTP
+semanage port -a -t http_port_t -p tcp 8080
+
+# Verify port assignment
+semanage port -l | grep 8080
+
+# Remove custom port (if needed)
+# semanage port -d -t http_port_t -p tcp 8080
+Troubleshooting Common Issues
+Issue 1: Context Restoration Problems
+# If contexts are not applying correctly
+# Check file context definitions
+semanage fcontext -l | grep myapp
+
+# Force context restoration
+restorecon -RvF /opt/myapp/
+
+# Verify contexts after restoration
+ls -lZ /opt/myapp/bin/myapp
+Issue 2: Policy Module Conflicts
+# Check for policy conflicts
+semodule -l | grep -E "(myapp|custom)"
+
+# Remove problematic module if needed
+# semodule -r myapp_policy
+
+# Reinstall with verbose output
+# semodule -v -i myapp_policy.pp
+Issue 3: Audit Log Analysis
+# Detailed audit log analysis
+ausearch -m AVC -ts today | grep denied
+
+# Use sealert for human-readable suggestions
+sealert -a /var/log/audit/audit.log | tail -50
+
+# Check setroubleshoot service
+systemctl status setroubleshoot
+Lab Verification
+Verification Checklist
+Run these commands to verify your lab completion:
+
+echo "=== SELinux Status Verification ==="
+sestatus
+echo ""
+
+echo "=== Custom Policy Verification ==="
+semodule -l | grep -E "(myapp|custom)"
+echo ""
+
+echo "=== File Context Verification ==="
+ls -lZ /opt/myapp/bin/myapp
+ls -lZ /opt/webtest/public/index.html
+echo ""
+
+echo "=== Application Test ==="
+/opt/myapp/bin/myapp
+echo "Exit code: $?"
+echo ""
+
+echo "=== Denial Check ==="
+ausearch -m AVC -ts recent | grep -E "(myapp|webtest)" || echo "No recent denials found"
+echo ""
+
+echo "=== Log File Verification ==="
+if [ -f /opt/myapp/logs/app.log ]; then
+    echo "Log file exists and contains:"
+    tail -3 /opt/myapp/logs/app.log
+else
+    echo "Log file not found"
+fi
+Conclusion
+In this comprehensive lab, you have successfully:
+
+Configured SELinux policies for file access control, learning how to apply appropriate security contexts to different types of content
+Mastered troubleshooting techniques using audit2allow to analyze SELinux denials and generate policy solutions
+Created custom SELinux policies from scratch, including defining custom types, file contexts, and access rules
+Implemented security controls that demonstrate how SELinux provides mandatory access control beyond traditional Linux permissions
+Why This Matters:
+
+SELinux is a critical security technology that provides an additional layer of protection for Linux systems. By implementing mandatory access controls, SELinux can prevent security breaches even when applications are compromised. The skills you've developed in this lab are essential for:
+
+System Security: Protecting sensitive data and system resources
+Compliance: Meeting security requirements in enterprise environments
+Incident Response: Understanding and resolving security policy violations
+Custom Applications: Securing custom software with tailored policies
+These SELinux configuration and troubleshooting skills are fundamental for Linux security professionals and are highly valued in enterprise environments where security is paramount. You now have the practical experience to implement, maintain, and troubleshoot SELinux in production systems.
