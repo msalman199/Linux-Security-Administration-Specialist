@@ -1,0 +1,610 @@
+System Hardening with Fail2Ban
+Objectives
+By the end of this lab, students will be able to:
+
+Install and configure Fail2Ban to protect against brute-force attacks
+Create custom jail configurations for SSH and web services
+Set up automated ban duration and monitoring systems
+Understand log analysis and intrusion detection principles
+Implement proactive security measures for Linux systems
+Monitor and manage banned IP addresses effectively
+Prerequisites
+Before starting this lab, students should have:
+
+Basic knowledge of Linux command line operations
+Understanding of system logs and log file locations
+Familiarity with text editors (nano, vim, or gedit)
+Basic networking concepts (IP addresses, ports, protocols)
+Knowledge of SSH and web service fundamentals
+Understanding of regular expressions (basic level)
+Lab Environment
+Al Nafi Cloud Machine Setup: This lab runs entirely on a single Linux machine provided by Al Nafi. Simply click Start Lab to access your pre-configured Ubuntu/CentOS cloud instance. No additional virtual machines or remote hosts are required.
+
+Task 1: Installing and Configuring Fail2Ban
+Subtask 1.1: Install Fail2Ban
+First, update your system and install Fail2Ban:
+
+# Update package repositories
+sudo apt update
+
+# Install Fail2Ban
+sudo apt install fail2ban -y
+
+# Verify installation
+fail2ban-client version
+Subtask 1.2: Understanding Fail2Ban Structure
+Explore the Fail2Ban directory structure:
+
+# Navigate to Fail2Ban configuration directory
+cd /etc/fail2ban
+
+# List configuration files
+ls -la
+
+# View the main configuration file
+sudo cat fail2ban.conf
+
+# Check the jail configuration template
+sudo cat jail.conf
+Subtask 1.3: Create Local Configuration Files
+Create local configuration files to avoid conflicts during updates:
+
+# Create local jail configuration
+sudo cp jail.conf jail.local
+
+# Create local fail2ban configuration
+sudo cp fail2ban.conf fail2ban.local
+
+# Verify files were created
+ls -la *.local
+Subtask 1.4: Configure Basic Fail2Ban Settings
+Edit the main Fail2Ban configuration:
+
+# Edit fail2ban.local
+sudo nano fail2ban.local
+Add or modify these settings in the [Definition] section:
+
+[Definition]
+# Log level (CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG)
+loglevel = INFO
+
+# Log target (/var/log/fail2ban.log, STDOUT, STDERR, SYSLOG)
+logtarget = /var/log/fail2ban.log
+
+# Socket file location
+socket = /var/run/fail2ban/fail2ban.sock
+
+# PID file location
+pidfile = /var/run/fail2ban/fail2ban.pid
+
+# Database file location
+dbfile = /var/lib/fail2ban/fail2ban.sqlite3
+Task 2: Configuring SSH Protection
+Subtask 2.1: Enable SSH Jail
+Edit the jail.local file to configure SSH protection:
+
+# Edit jail configuration
+sudo nano jail.local
+Configure the [DEFAULT] section:
+
+[DEFAULT]
+# Ban time in seconds (10 minutes)
+bantime = 600
+
+# Find time window in seconds (10 minutes)
+findtime = 600
+
+# Maximum retry attempts
+maxretry = 3
+
+# Default backend for log monitoring
+backend = auto
+
+# Email settings (optional)
+destemail = admin@yourdomain.com
+sender = fail2ban@yourdomain.com
+
+# Action to take when banning
+action = %(action_)s
+Enable and configure the SSH jail:
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+Subtask 2.2: Create Custom SSH Filter
+Create a custom filter for enhanced SSH protection:
+
+# Create custom SSH filter
+sudo nano /etc/fail2ban/filter.d/sshd-custom.conf
+Add the following content:
+
+[Definition]
+# Custom SSH filter with additional patterns
+failregex = ^%(__prefix_line)s(?:error: PAM: )?[aA]uthentication (?:failure|error|failed) for .* from <HOST>( via \S+)?\s*$
+            ^%(__prefix_line)s(?:error: )?Received disconnect from <HOST>: 3: .*: Auth fail$
+            ^%(__prefix_line)sUser .+ from <HOST> not allowed because not listed in AllowUsers$
+            ^%(__prefix_line)sUser .+ from <HOST> not allowed because listed in DenyUsers$
+            ^%(__prefix_line)sUser .+ from <HOST> not allowed because not in any group$
+            ^%(__prefix_line)srefused connect from \S+ \(<HOST>\)$
+            ^%(__prefix_line)sReceived disconnect from <HOST>: 11: Bye Bye$
+            ^%(__prefix_line)sConnection closed by <HOST>$
+
+ignoreregex =
+
+[Init]
+# Define common prefix for log lines
+__prefix_line = (?:(?:\S+ )?(?:kernel: )?(?:\[\s*\d+\.\d+\] )?(?:\S+\s+)?(?:\S+:\s+)?)?
+Subtask 2.3: Test SSH Configuration
+Start Fail2Ban and test the SSH configuration:
+
+# Start Fail2Ban service
+sudo systemctl start fail2ban
+
+# Enable Fail2Ban to start on boot
+sudo systemctl enable fail2ban
+
+# Check service status
+sudo systemctl status fail2ban
+
+# Verify SSH jail is active
+sudo fail2ban-client status
+
+# Check specific SSH jail status
+sudo fail2ban-client status sshd
+Task 3: Setting Up Custom Jail Configurations
+Subtask 3.1: Configure Apache/Nginx Protection
+Add web server protection to jail.local:
+
+# Edit jail configuration
+sudo nano jail.local
+Add Apache protection:
+
+[apache-auth]
+enabled = true
+port = http,https
+filter = apache-auth
+logpath = /var/log/apache2/error.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+
+[apache-badbots]
+enabled = true
+port = http,https
+filter = apache-badbots
+logpath = /var/log/apache2/access.log
+maxretry = 2
+bantime = 86400
+findtime = 600
+
+[apache-noscript]
+enabled = true
+port = http,https
+filter = apache-noscript
+logpath = /var/log/apache2/access.log
+maxretry = 6
+bantime = 86400
+findtime = 600
+Subtask 3.2: Create Custom Web Application Filter
+Create a custom filter for web application attacks:
+
+# Create custom web filter
+sudo nano /etc/fail2ban/filter.d/webapp-custom.conf
+Add the following content:
+
+[Definition]
+# Custom web application filter
+failregex = ^<HOST> -.*"(GET|POST).*" (404|403|500) .*$
+            ^<HOST> -.*"(GET|POST).*(\.php|\.asp|\.jsp).*" 200 .*$
+            ^<HOST> -.*"(GET|POST).*(union|select|insert|delete|drop|create|alter).*" .*$
+            ^<HOST> -.*"(GET|POST).*(<script|javascript:|vbscript:).*" .*$
+
+ignoreregex =
+Add the custom jail to jail.local:
+
+[webapp-custom]
+enabled = true
+port = http,https
+filter = webapp-custom
+logpath = /var/log/apache2/access.log
+maxretry = 5
+bantime = 7200
+findtime = 300
+Subtask 3.3: Configure FTP Protection
+Add FTP service protection:
+
+[vsftpd]
+enabled = true
+port = ftp,ftp-data,ftps,ftps-data
+filter = vsftpd
+logpath = /var/log/vsftpd.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+
+[proftpd]
+enabled = true
+port = ftp,ftp-data,ftps,ftps-data
+filter = proftpd
+logpath = /var/log/proftpd/proftpd.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+Task 4: Automating Ban Duration and Monitoring
+Subtask 4.1: Configure Progressive Ban Times
+Create a progressive banning system by editing jail.local:
+
+# Edit jail configuration for progressive banning
+sudo nano jail.local
+Add progressive ban configuration:
+
+[DEFAULT]
+# Progressive ban times
+bantime.increment = true
+bantime.factor = 2
+bantime.formula = ban.Time * (1<<(ban.Count if ban.Count<20 else 20)) * banFactor
+bantime.maxtime = 604800
+bantime.overalljails = true
+Subtask 4.2: Create Monitoring Script
+Create a script to monitor Fail2Ban activity:
+
+# Create monitoring script
+sudo nano /usr/local/bin/fail2ban-monitor.sh
+Add the following content:
+
+#!/bin/bash
+
+# Fail2Ban Monitoring Script
+LOG_FILE="/var/log/fail2ban-monitor.log"
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "=== Fail2Ban Status Report - $DATE ===" >> $LOG_FILE
+
+# Check service status
+echo "Service Status:" >> $LOG_FILE
+systemctl is-active fail2ban >> $LOG_FILE
+
+# Get overall status
+echo -e "\nOverall Status:" >> $LOG_FILE
+fail2ban-client status >> $LOG_FILE
+
+# Get detailed jail information
+for jail in $(fail2ban-client status | grep "Jail list:" | cut -d: -f2 | tr ',' '\n' | tr -d ' ')
+do
+    echo -e "\n=== $jail Jail Details ===" >> $LOG_FILE
+    fail2ban-client status $jail >> $LOG_FILE
+done
+
+# Check recent bans
+echo -e "\nRecent Ban Activity:" >> $LOG_FILE
+tail -20 /var/log/fail2ban.log | grep "Ban" >> $LOG_FILE
+
+# System resource usage
+echo -e "\nSystem Resources:" >> $LOG_FILE
+ps aux | grep fail2ban | grep -v grep >> $LOG_FILE
+
+echo "=== End Report ===" >> $LOG_FILE
+echo "" >> $LOG_FILE
+Make the script executable:
+
+# Make script executable
+sudo chmod +x /usr/local/bin/fail2ban-monitor.sh
+
+# Test the script
+sudo /usr/local/bin/fail2ban-monitor.sh
+
+# View the log
+sudo cat /var/log/fail2ban-monitor.log
+Subtask 4.3: Set Up Automated Monitoring
+Create a cron job for automated monitoring:
+
+# Edit crontab
+sudo crontab -e
+Add the following line to run monitoring every hour:
+
+# Fail2Ban monitoring every hour
+0 * * * * /usr/local/bin/fail2ban-monitor.sh
+Subtask 4.4: Create Unban Script
+Create a script for managing banned IPs:
+
+# Create unban management script
+sudo nano /usr/local/bin/fail2ban-manage.sh
+Add the following content:
+
+#!/bin/bash
+
+# Fail2Ban Management Script
+
+show_help() {
+    echo "Usage: $0 [OPTION] [JAIL] [IP]"
+    echo "Options:"
+    echo "  -s, --status [JAIL]     Show status of all jails or specific jail"
+    echo "  -u, --unban JAIL IP     Unban specific IP from jail"
+    echo "  -b, --ban JAIL IP       Manually ban IP in jail"
+    echo "  -l, --list JAIL         List banned IPs in jail"
+    echo "  -h, --help              Show this help message"
+}
+
+case "$1" in
+    -s|--status)
+        if [ -z "$2" ]; then
+            fail2ban-client status
+        else
+            fail2ban-client status "$2"
+        fi
+        ;;
+    -u|--unban)
+        if [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Error: Please specify jail and IP address"
+            show_help
+            exit 1
+        fi
+        fail2ban-client set "$2" unbanip "$3"
+        echo "IP $3 unbanned from jail $2"
+        ;;
+    -b|--ban)
+        if [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Error: Please specify jail and IP address"
+            show_help
+            exit 1
+        fi
+        fail2ban-client set "$2" banip "$3"
+        echo "IP $3 banned in jail $2"
+        ;;
+    -l|--list)
+        if [ -z "$2" ]; then
+            echo "Error: Please specify jail name"
+            show_help
+            exit 1
+        fi
+        fail2ban-client status "$2" | grep "Banned IP list:" | cut -d: -f2
+        ;;
+    -h|--help)
+        show_help
+        ;;
+    *)
+        echo "Error: Invalid option"
+        show_help
+        exit 1
+        ;;
+esac
+Make the script executable:
+
+# Make script executable
+sudo chmod +x /usr/local/bin/fail2ban-manage.sh
+
+# Test the script
+sudo /usr/local/bin/fail2ban-manage.sh --status
+Task 5: Testing and Verification
+Subtask 5.1: Restart and Verify Configuration
+Restart Fail2Ban with new configurations:
+
+# Restart Fail2Ban service
+sudo systemctl restart fail2ban
+
+# Check service status
+sudo systemctl status fail2ban
+
+# Verify all jails are running
+sudo fail2ban-client status
+
+# Check specific jail configurations
+sudo fail2ban-client status sshd
+Subtask 5.2: Test Ban Functionality
+Create a test scenario to verify banning works:
+
+# Check current SSH attempts in auth log
+sudo tail -f /var/log/auth.log &
+
+# In another terminal, simulate failed attempts (use a test account)
+# Note: This is for testing purposes only
+ssh testuser@localhost
+
+# Check if IP gets banned (check from another terminal)
+sudo fail2ban-client status sshd
+
+# View Fail2Ban log for ban activity
+sudo tail -20 /var/log/fail2ban.log
+Subtask 5.3: Verify Log Monitoring
+Check that Fail2Ban is properly monitoring logs:
+
+# Check which log files are being monitored
+sudo fail2ban-client get sshd logpath
+
+# Verify log file permissions
+ls -la /var/log/auth.log
+
+# Test log rotation compatibility
+sudo logrotate -f /etc/logrotate.d/rsyslog
+
+# Restart Fail2Ban to ensure it handles log rotation
+sudo systemctl restart fail2ban
+Task 6: Advanced Configuration and Optimization
+Subtask 6.1: Configure Whitelist
+Add trusted IP addresses to whitelist:
+
+# Edit jail.local to add whitelist
+sudo nano jail.local
+Add to the [DEFAULT] section:
+
+[DEFAULT]
+# Whitelist trusted IPs (space-separated)
+ignoreip = 127.0.0.1/8 ::1 192.168.1.0/24 10.0.0.0/8
+
+# Ignore self
+ignoreself = true
+
+# Ignore command for dynamic whitelisting
+ignorecommand =
+Subtask 6.2: Configure Email Notifications
+Set up email notifications for bans:
+
+# Install mail utilities
+sudo apt install mailutils -y
+
+# Edit jail.local for email configuration
+sudo nano jail.local
+Configure email settings:
+
+[DEFAULT]
+# Email configuration
+destemail = admin@yourdomain.com
+sender = fail2ban@yourdomain.com
+mta = mail
+
+# Action with email notification
+action = %(action_mwl)s
+Subtask 6.3: Performance Optimization
+Optimize Fail2Ban performance:
+
+# Edit fail2ban.local for performance settings
+sudo nano fail2ban.local
+Add performance optimizations:
+
+[Definition]
+# Database purge age (1 day)
+dbpurgeage = 86400
+
+# Maximum number of lines to process
+dbmaxmatches = 10
+
+# Backend optimization
+backend = systemd
+Task 7: Maintenance and Troubleshooting
+Subtask 7.1: Create Maintenance Script
+Create a maintenance script for regular cleanup:
+
+# Create maintenance script
+sudo nano /usr/local/bin/fail2ban-maintenance.sh
+Add the following content:
+
+#!/bin/bash
+
+# Fail2Ban Maintenance Script
+LOG_FILE="/var/log/fail2ban-maintenance.log"
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "=== Fail2Ban Maintenance - $DATE ===" >> $LOG_FILE
+
+# Reload configuration
+echo "Reloading Fail2Ban configuration..." >> $LOG_FILE
+fail2ban-client reload >> $LOG_FILE 2>&1
+
+# Clean old database entries
+echo "Cleaning database..." >> $LOG_FILE
+fail2ban-client set dbpurgeage 604800 >> $LOG_FILE 2>&1
+
+# Rotate logs if they're too large
+if [ -f /var/log/fail2ban.log ]; then
+    LOG_SIZE=$(stat -c%s /var/log/fail2ban.log)
+    if [ $LOG_SIZE -gt 10485760 ]; then  # 10MB
+        echo "Rotating large log file..." >> $LOG_FILE
+        logrotate -f /etc/logrotate.d/fail2ban >> $LOG_FILE 2>&1
+    fi
+fi
+
+# Check for configuration errors
+echo "Checking configuration..." >> $LOG_FILE
+fail2ban-client -t >> $LOG_FILE 2>&1
+
+echo "Maintenance completed." >> $LOG_FILE
+echo "" >> $LOG_FILE
+Make executable and schedule:
+
+# Make executable
+sudo chmod +x /usr/local/bin/fail2ban-maintenance.sh
+
+# Add to weekly cron
+sudo crontab -e
+Add weekly maintenance:
+
+# Weekly Fail2Ban maintenance
+0 2 * * 0 /usr/local/bin/fail2ban-maintenance.sh
+Subtask 7.2: Troubleshooting Common Issues
+Create a troubleshooting checklist:
+
+# Check Fail2Ban service status
+sudo systemctl status fail2ban
+
+# Test configuration syntax
+sudo fail2ban-client -t
+
+# Check log file permissions
+ls -la /var/log/auth.log /var/log/fail2ban.log
+
+# Verify jail configurations
+sudo fail2ban-client status
+
+# Check for conflicting iptables rules
+sudo iptables -L -n
+
+# Monitor real-time activity
+sudo tail -f /var/log/fail2ban.log
+
+# Check system resources
+ps aux | grep fail2ban
+Verification and Testing
+Final System Check
+Run comprehensive verification:
+
+# Create verification script
+sudo nano /usr/local/bin/fail2ban-verify.sh
+Add verification content:
+
+#!/bin/bash
+
+echo "=== Fail2Ban System Verification ==="
+
+# Check service status
+echo "1. Service Status:"
+systemctl is-active fail2ban
+echo ""
+
+# Check jail status
+echo "2. Active Jails:"
+fail2ban-client status
+echo ""
+
+# Check configuration
+echo "3. Configuration Test:"
+fail2ban-client -t
+echo ""
+
+# Check log monitoring
+echo "4. Log Files Being Monitored:"
+for jail in $(fail2ban-client status | grep "Jail list:" | cut -d: -f2 | tr ',' '\n' | tr -d ' ')
+do
+    echo "  $jail: $(fail2ban-client get $jail logpath)"
+done
+echo ""
+
+# Check recent activity
+echo "5. Recent Activity (last 10 lines):"
+tail -10 /var/log/fail2ban.log
+echo ""
+
+echo "=== Verification Complete ==="
+Run the verification:
+
+# Make executable and run
+sudo chmod +x /usr/local/bin/fail2ban-verify.sh
+sudo /usr/local/bin/fail2ban-verify.sh
+Conclusion
+In this comprehensive lab, you have successfully implemented a robust system hardening solution using Fail2Ban. You have accomplished the following key objectives:
+
+Security Implementation: You configured Fail2Ban to protect critical services including SSH, web servers, and FTP services against brute-force attacks and malicious activities.
+
+Custom Configuration: You created custom jail configurations tailored to specific services and threat patterns, implementing progressive banning systems that increase ban duration for repeat offenders.
+
+Automated Monitoring: You established automated monitoring and maintenance systems that provide real-time visibility into security events and ensure optimal performance of your intrusion prevention system.
+
+Practical Skills Developed: Through hands-on configuration and testing, you gained practical experience in log analysis, regular expression patterns, and security automation that are essential for Linux system administration.
+
+Real-World Application: The skills and configurations you implemented in this lab directly apply to production environments where protecting systems from automated attacks is crucial for maintaining security and availability.
+
+This lab has equipped you with the knowledge and tools necessary to implement effective intrusion prevention systems, making you better prepared for the Al Razzaq Linux Security & Administration Specialist certification and real-world security challenges. The automated monitoring and management scripts you created will serve as valuable tools for ongoing system maintenance and security operations.
