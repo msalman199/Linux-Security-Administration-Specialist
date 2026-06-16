@@ -1,0 +1,687 @@
+System Backup and Restoration
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the importance of system backups and restoration strategies
+Configure and use rsync for creating efficient system backups
+Implement automated backup solutions using cron jobs
+Perform system restoration from backup files
+Verify backup integrity and test restoration procedures
+Create comprehensive backup scripts for production environments
+Prerequisites
+Before starting this lab, students should have:
+
+Basic knowledge of Linux command-line interface
+Understanding of file system structure and permissions
+Familiarity with text editors (nano, vim, or gedit)
+Basic understanding of shell scripting concepts
+Knowledge of cron job scheduling fundamentals
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software - everything is ready to use.
+
+Lab Environment Setup
+Your cloud machine comes with:
+
+Ubuntu 20.04 LTS or CentOS 8
+Pre-installed rsync utility
+Cron service running
+Sample data directories for practice
+Sufficient storage space for backup operations
+Task 1: Use rsync for System Backups
+Subtask 1.1: Understanding rsync Basics
+rsync (remote sync) is a powerful utility for efficiently transferring and synchronizing files between directories or systems. It only transfers the differences between source and destination files, making it ideal for backups.
+
+First, let's explore the basic rsync syntax and options:
+
+# Check if rsync is installed
+rsync --version
+
+# Basic rsync syntax
+# rsync [options] source destination
+Subtask 1.2: Create Sample Data for Backup Testing
+Let's create some sample data to practice our backup procedures:
+
+# Create a source directory with sample data
+mkdir -p /home/$USER/important_data
+cd /home/$USER/important_data
+
+# Create sample files
+echo "This is document 1" > document1.txt
+echo "This is document 2" > document2.txt
+echo "Configuration data" > config.conf
+mkdir subdirectory
+echo "Nested file content" > subdirectory/nested_file.txt
+
+# Create a larger file for testing
+dd if=/dev/zero of=largefile.dat bs=1M count=10
+
+# Set various permissions for testing
+chmod 755 document1.txt
+chmod 644 document2.txt
+chmod 600 config.conf
+
+# Display the created structure
+ls -la
+ls -la subdirectory/
+Subtask 1.3: Perform Basic rsync Backup
+Now let's create our first backup using rsync:
+
+# Create backup destination directory
+mkdir -p /home/$USER/backups
+
+# Perform basic rsync backup
+rsync -av /home/$USER/important_data/ /home/$USER/backups/basic_backup/
+
+# Verify the backup
+ls -la /home/$USER/backups/basic_backup/
+Key rsync options explained:
+
+-a: Archive mode (preserves permissions, timestamps, symbolic links)
+-v: Verbose output (shows files being transferred)
+Subtask 1.4: Advanced rsync Options
+Let's explore more advanced rsync features:
+
+# Backup with additional options
+rsync -avz --progress --stats /home/$USER/important_data/ /home/$USER/backups/advanced_backup/
+
+# Create incremental backup with hard links
+rsync -av --link-dest=/home/$USER/backups/advanced_backup /home/$USER/important_data/ /home/$USER/backups/incremental_backup/
+
+# Backup with exclusions
+rsync -av --exclude='*.tmp' --exclude='*.log' /home/$USER/important_data/ /home/$USER/backups/filtered_backup/
+Advanced options explained:
+
+-z: Compress data during transfer
+--progress: Show progress during transfer
+--stats: Show transfer statistics
+--link-dest: Create hard links to unchanged files (saves space)
+--exclude: Exclude files matching patterns
+Subtask 1.5: Create a Comprehensive Backup Script
+Create a backup script for system-wide backups:
+
+# Create backup script
+nano /home/$USER/system_backup.sh
+Add the following content to the script:
+
+#!/bin/bash
+
+# System Backup Script using rsync
+# Author: Al Razzaq Linux Security & Administration
+# Date: $(date)
+
+# Configuration variables
+BACKUP_SOURCE="/home/$USER"
+BACKUP_DEST="/home/$USER/backups/system_backup"
+LOG_FILE="/home/$USER/backups/backup.log"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup directory if it doesn't exist
+mkdir -p "$BACKUP_DEST"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Start backup process
+log_message "Starting system backup..."
+
+# Perform rsync backup
+rsync -av \
+    --delete \
+    --exclude='*.tmp' \
+    --exclude='*.cache' \
+    --exclude='.Trash*' \
+    --exclude='Downloads/' \
+    --stats \
+    "$BACKUP_SOURCE/" \
+    "$BACKUP_DEST/" 2>&1 | tee -a "$LOG_FILE"
+
+# Check if backup was successful
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    log_message "Backup completed successfully"
+    
+    # Create backup verification
+    BACKUP_SIZE=$(du -sh "$BACKUP_DEST" | cut -f1)
+    log_message "Backup size: $BACKUP_SIZE"
+    
+    # Create backup manifest
+    find "$BACKUP_DEST" -type f > "$BACKUP_DEST/../backup_manifest_$DATE.txt"
+    log_message "Backup manifest created: backup_manifest_$DATE.txt"
+else
+    log_message "Backup failed with errors"
+    exit 1
+fi
+
+log_message "Backup process completed"
+Make the script executable and run it:
+
+# Make script executable
+chmod +x /home/$USER/system_backup.sh
+
+# Run the backup script
+./system_backup.sh
+
+# Check the log file
+cat /home/$USER/backups/backup.log
+Task 2: Automate Backups with Cron Jobs
+Subtask 2.1: Understanding Cron Job Syntax
+Cron jobs allow you to schedule tasks to run automatically at specified times. The cron syntax follows this format:
+
+* * * * * command
+│ │ │ │ │
+│ │ │ │ └── Day of week (0-7, Sunday = 0 or 7)
+│ │ │ └──── Month (1-12)
+│ │ └────── Day of month (1-31)
+│ └──────── Hour (0-23)
+└────────── Minute (0-59)
+Subtask 2.2: Create Automated Daily Backup
+Let's set up an automated daily backup:
+
+# Open crontab for editing
+crontab -e
+Add the following line to schedule daily backups at 2:00 AM:
+
+# Daily backup at 2:00 AM
+0 2 * * * /home/$USER/system_backup.sh >> /home/$USER/backups/cron_backup.log 2>&1
+Subtask 2.3: Create Multiple Backup Schedules
+Create different backup scripts for different schedules:
+
+# Create weekly backup script
+nano /home/$USER/weekly_backup.sh
+Add the following content:
+
+#!/bin/bash
+
+# Weekly Full System Backup Script
+BACKUP_SOURCE="/home/$USER"
+BACKUP_DEST="/home/$USER/backups/weekly_backup_$(date +%Y%m%d)"
+LOG_FILE="/home/$USER/backups/weekly_backup.log"
+
+# Create backup directory
+mkdir -p "$BACKUP_DEST"
+
+# Log start time
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting weekly backup..." >> "$LOG_FILE"
+
+# Perform comprehensive backup
+rsync -av \
+    --delete \
+    --exclude='*.tmp' \
+    --exclude='*.cache' \
+    --exclude='.Trash*' \
+    --stats \
+    "$BACKUP_SOURCE/" \
+    "$BACKUP_DEST/" >> "$LOG_FILE" 2>&1
+
+# Compress the backup
+tar -czf "$BACKUP_DEST.tar.gz" -C "$(dirname "$BACKUP_DEST")" "$(basename "$BACKUP_DEST")"
+
+# Remove uncompressed backup
+rm -rf "$BACKUP_DEST"
+
+# Log completion
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Weekly backup completed and compressed" >> "$LOG_FILE"
+
+# Clean up old weekly backups (keep only last 4 weeks)
+find /home/$USER/backups/ -name "weekly_backup_*.tar.gz" -mtime +28 -delete
+Make it executable:
+
+chmod +x /home/$USER/weekly_backup.sh
+Subtask 2.4: Configure Multiple Cron Jobs
+Edit the crontab to add multiple backup schedules:
+
+crontab -e
+Add these entries:
+
+# Daily incremental backup at 2:00 AM
+0 2 * * * /home/$USER/system_backup.sh >> /home/$USER/backups/daily_backup.log 2>&1
+
+# Weekly full backup on Sundays at 3:00 AM
+0 3 * * 0 /home/$USER/weekly_backup.sh
+
+# Monthly backup on the 1st day at 4:00 AM
+0 4 1 * * /home/$USER/system_backup.sh >> /home/$USER/backups/monthly_backup.log 2>&1
+
+# Backup verification every day at 6:00 AM
+0 6 * * * /home/$USER/verify_backup.sh >> /home/$USER/backups/verification.log 2>&1
+Subtask 2.5: Create Backup Verification Script
+Create a script to verify backup integrity:
+
+nano /home/$USER/verify_backup.sh
+Add the following content:
+
+#!/bin/bash
+
+# Backup Verification Script
+BACKUP_DIR="/home/$USER/backups/system_backup"
+LOG_FILE="/home/$USER/backups/verification.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_message "Starting backup verification..."
+
+# Check if backup directory exists
+if [ ! -d "$BACKUP_DIR" ]; then
+    log_message "ERROR: Backup directory not found: $BACKUP_DIR"
+    exit 1
+fi
+
+# Count files in backup
+BACKUP_FILE_COUNT=$(find "$BACKUP_DIR" -type f | wc -l)
+log_message "Files in backup: $BACKUP_FILE_COUNT"
+
+# Check backup size
+BACKUP_SIZE=$(du -sh "$BACKUP_DIR" | cut -f1)
+log_message "Backup size: $BACKUP_SIZE"
+
+# Verify some critical files exist
+CRITICAL_FILES=(
+    "important_data/document1.txt"
+    "important_data/document2.txt"
+    "important_data/config.conf"
+)
+
+for file in "${CRITICAL_FILES[@]}"; do
+    if [ -f "$BACKUP_DIR/$file" ]; then
+        log_message "VERIFIED: $file exists in backup"
+    else
+        log_message "WARNING: $file missing from backup"
+    fi
+done
+
+# Check backup age
+BACKUP_AGE=$(find "$BACKUP_DIR" -type f -name "document1.txt" -mtime +1 | wc -l)
+if [ "$BACKUP_AGE" -gt 0 ]; then
+    log_message "WARNING: Backup appears to be older than 1 day"
+else
+    log_message "Backup is current"
+fi
+
+log_message "Backup verification completed"
+Make it executable:
+
+chmod +x /home/$USER/verify_backup.sh
+Subtask 2.6: Test Cron Jobs
+Test your cron jobs without waiting for the scheduled time:
+
+# List current cron jobs
+crontab -l
+
+# Test the backup script manually
+./system_backup.sh
+
+# Test the verification script
+./verify_backup.sh
+
+# Check cron service status
+systemctl status cron
+
+# View cron logs
+grep CRON /var/log/syslog | tail -10
+Task 3: Restore a System from Backup
+Subtask 3.1: Simulate Data Loss
+First, let's simulate a data loss scenario to practice restoration:
+
+# Create a backup of our current state
+rsync -av /home/$USER/important_data/ /home/$USER/backups/pre_disaster_backup/
+
+# Simulate data corruption/loss
+rm -f /home/$USER/important_data/document1.txt
+rm -f /home/$USER/important_data/document2.txt
+echo "corrupted data" > /home/$USER/important_data/config.conf
+rm -rf /home/$USER/important_data/subdirectory
+
+# Verify the "damage"
+ls -la /home/$USER/important_data/
+cat /home/$USER/important_data/config.conf
+Subtask 3.2: Perform Basic File Restoration
+Restore individual files from backup:
+
+# Restore specific files
+rsync -av /home/$USER/backups/system_backup/important_data/document1.txt /home/$USER/important_data/
+rsync -av /home/$USER/backups/system_backup/important_data/document2.txt /home/$USER/important_data/
+
+# Restore directory structure
+rsync -av /home/$USER/backups/system_backup/important_data/subdirectory/ /home/$USER/important_data/subdirectory/
+
+# Verify restoration
+ls -la /home/$USER/important_data/
+ls -la /home/$USER/important_data/subdirectory/
+Subtask 3.3: Complete Directory Restoration
+Perform a complete directory restoration:
+
+# Remove the corrupted directory completely
+rm -rf /home/$USER/important_data
+
+# Restore the entire directory from backup
+rsync -av /home/$USER/backups/system_backup/important_data/ /home/$USER/important_data/
+
+# Verify complete restoration
+ls -la /home/$USER/important_data/
+cat /home/$USER/important_data/config.conf
+cat /home/$USER/important_data/subdirectory/nested_file.txt
+Subtask 3.4: Create Restoration Script
+Create a comprehensive restoration script:
+
+nano /home/$USER/restore_system.sh
+Add the following content:
+
+#!/bin/bash
+
+# System Restoration Script
+# Author: Al Razzaq Linux Security & Administration
+
+# Configuration
+BACKUP_SOURCE="/home/$USER/backups/system_backup"
+RESTORE_TARGET="/home/$USER"
+LOG_FILE="/home/$USER/backups/restore.log"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Function to confirm restoration
+confirm_restore() {
+    echo "WARNING: This will overwrite existing files in $RESTORE_TARGET"
+    echo "Are you sure you want to continue? (yes/no)"
+    read -r response
+    if [ "$response" != "yes" ]; then
+        log_message "Restoration cancelled by user"
+        exit 0
+    fi
+}
+
+# Check if backup exists
+if [ ! -d "$BACKUP_SOURCE" ]; then
+    log_message "ERROR: Backup source not found: $BACKUP_SOURCE"
+    exit 1
+fi
+
+log_message "Starting system restoration from $BACKUP_SOURCE"
+
+# Confirm with user
+confirm_restore
+
+# Create pre-restoration backup
+PRE_RESTORE_BACKUP="/home/$USER/backups/pre_restore_backup_$DATE"
+log_message "Creating pre-restoration backup at $PRE_RESTORE_BACKUP"
+rsync -av "$RESTORE_TARGET/" "$PRE_RESTORE_BACKUP/" 2>&1 | tee -a "$LOG_FILE"
+
+# Perform restoration
+log_message "Performing system restoration..."
+rsync -av \
+    --delete \
+    --stats \
+    "$BACKUP_SOURCE/" \
+    "$RESTORE_TARGET/" 2>&1 | tee -a "$LOG_FILE"
+
+# Verify restoration
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    log_message "System restoration completed successfully"
+    
+    # Generate restoration report
+    RESTORED_FILES=$(find "$RESTORE_TARGET" -type f | wc -l)
+    RESTORED_SIZE=$(du -sh "$RESTORE_TARGET" | cut -f1)
+    
+    log_message "Restoration Statistics:"
+    log_message "- Files restored: $RESTORED_FILES"
+    log_message "- Total size: $RESTORED_SIZE"
+    log_message "- Pre-restoration backup saved at: $PRE_RESTORE_BACKUP"
+else
+    log_message "ERROR: System restoration failed"
+    exit 1
+fi
+
+log_message "Restoration process completed"
+Make it executable:
+
+chmod +x /home/$USER/restore_system.sh
+Subtask 3.5: Test Selective Restoration
+Create a script for selective file restoration:
+
+nano /home/$USER/selective_restore.sh
+Add the following content:
+
+#!/bin/bash
+
+# Selective File Restoration Script
+
+BACKUP_SOURCE="/home/$USER/backups/system_backup"
+LOG_FILE="/home/$USER/backups/selective_restore.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Function to restore specific file
+restore_file() {
+    local file_path="$1"
+    local backup_file="$BACKUP_SOURCE/$file_path"
+    local target_file="/home/$USER/$file_path"
+    
+    if [ -f "$backup_file" ]; then
+        # Create target directory if it doesn't exist
+        mkdir -p "$(dirname "$target_file")"
+        
+        # Restore the file
+        cp "$backup_file" "$target_file"
+        log_message "Restored: $file_path"
+        return 0
+    else
+        log_message "ERROR: File not found in backup: $file_path"
+        return 1
+    fi
+}
+
+# Function to list available files in backup
+list_backup_files() {
+    echo "Available files in backup:"
+    find "$BACKUP_SOURCE" -type f -printf "%P\n" | head -20
+    echo "..."
+    echo "Total files: $(find "$BACKUP_SOURCE" -type f | wc -l)"
+}
+
+# Main menu
+while true; do
+    echo ""
+    echo "=== Selective File Restoration ==="
+    echo "1. List available backup files"
+    echo "2. Restore specific file"
+    echo "3. Restore multiple files"
+    echo "4. Exit"
+    echo ""
+    read -p "Choose an option (1-4): " choice
+    
+    case $choice in
+        1)
+            list_backup_files
+            ;;
+        2)
+            read -p "Enter file path to restore (relative to home): " file_path
+            restore_file "$file_path"
+            ;;
+        3)
+            echo "Enter file paths (one per line, empty line to finish):"
+            while read -r file_path; do
+                [ -z "$file_path" ] && break
+                restore_file "$file_path"
+            done
+            ;;
+        4)
+            log_message "Selective restoration session ended"
+            exit 0
+            ;;
+        *)
+            echo "Invalid option. Please choose 1-4."
+            ;;
+    esac
+done
+Make it executable and test it:
+
+chmod +x /home/$USER/selective_restore.sh
+
+# Test the selective restoration
+./selective_restore.sh
+Subtask 3.6: Verify Restoration Integrity
+Create a script to verify restoration integrity:
+
+nano /home/$USER/verify_restoration.sh
+Add the following content:
+
+#!/bin/bash
+
+# Restoration Verification Script
+
+BACKUP_SOURCE="/home/$USER/backups/system_backup"
+RESTORE_TARGET="/home/$USER"
+LOG_FILE="/home/$USER/backups/restoration_verification.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+log_message "Starting restoration verification..."
+
+# Compare file counts
+BACKUP_COUNT=$(find "$BACKUP_SOURCE" -type f | wc -l)
+RESTORE_COUNT=$(find "$RESTORE_TARGET" -type f | wc -l)
+
+log_message "File count comparison:"
+log_message "- Backup files: $BACKUP_COUNT"
+log_message "- Restored files: $RESTORE_COUNT"
+
+# Compare specific critical files
+CRITICAL_FILES=(
+    "important_data/document1.txt"
+    "important_data/document2.txt"
+    "important_data/config.conf"
+    "important_data/subdirectory/nested_file.txt"
+)
+
+log_message "Verifying critical files:"
+for file in "${CRITICAL_FILES[@]}"; do
+    backup_file="$BACKUP_SOURCE/$file"
+    restore_file="$RESTORE_TARGET/$file"
+    
+    if [ -f "$backup_file" ] && [ -f "$restore_file" ]; then
+        # Compare file contents
+        if cmp -s "$backup_file" "$restore_file"; then
+            log_message "✓ VERIFIED: $file matches backup"
+        else
+            log_message "✗ ERROR: $file differs from backup"
+        fi
+    else
+        log_message "✗ ERROR: $file missing in backup or restoration"
+    fi
+done
+
+# Check file permissions
+log_message "Checking file permissions:"
+for file in "${CRITICAL_FILES[@]}"; do
+    backup_file="$BACKUP_SOURCE/$file"
+    restore_file="$RESTORE_TARGET/$file"
+    
+    if [ -f "$backup_file" ] && [ -f "$restore_file" ]; then
+        backup_perms=$(stat -c "%a" "$backup_file")
+        restore_perms=$(stat -c "%a" "$restore_file")
+        
+        if [ "$backup_perms" = "$restore_perms" ]; then
+            log_message "✓ PERMISSIONS OK: $file ($restore_perms)"
+        else
+            log_message "✗ PERMISSIONS DIFFER: $file (backup: $backup_perms, restored: $restore_perms)"
+        fi
+    fi
+done
+
+log_message "Restoration verification completed"
+Make it executable and run it:
+
+chmod +x /home/$USER/verify_restoration.sh
+./verify_restoration.sh
+
+# Check the verification log
+cat /home/$USER/backups/restoration_verification.log
+Troubleshooting Common Issues
+Issue 1: Permission Denied Errors
+If you encounter permission denied errors during backup or restoration:
+
+# Check file permissions
+ls -la /home/$USER/important_data/
+
+# Fix permissions if needed
+chmod -R u+rw /home/$USER/important_data/
+
+# Use sudo for system-wide backups (if needed)
+sudo rsync -av /etc/ /home/$USER/backups/etc_backup/
+Issue 2: Insufficient Disk Space
+Monitor disk space during backup operations:
+
+# Check available disk space
+df -h
+
+# Check backup directory size
+du -sh /home/$USER/backups/
+
+# Clean up old backups if needed
+find /home/$USER/backups/ -name "*.tar.gz" -mtime +30 -delete
+Issue 3: Cron Jobs Not Running
+If cron jobs are not executing:
+
+# Check cron service status
+systemctl status cron
+
+# Start cron service if stopped
+sudo systemctl start cron
+
+# Check cron logs
+grep CRON /var/log/syslog | tail -20
+
+# Verify crontab syntax
+crontab -l
+Issue 4: Backup Corruption
+To handle backup corruption:
+
+# Create checksums for backup verification
+find /home/$USER/backups/system_backup -type f -exec md5sum {} \; > /home/$USER/backups/backup_checksums.md5
+
+# Verify backup integrity
+cd /home/$USER/backups && md5sum -c backup_checksums.md5
+Conclusion
+In this comprehensive lab, you have successfully learned and implemented essential system backup and restoration techniques using open-source tools. Here's what you accomplished:
+
+Key Achievements:
+
+Mastered rsync for System Backups: You learned how to use rsync effectively for creating efficient, incremental backups while preserving file permissions, timestamps, and directory structures.
+
+Implemented Automated Backup Solutions: You configured cron jobs to automate daily, weekly, and monthly backups, ensuring your system data is consistently protected without manual intervention.
+
+Developed Restoration Procedures: You created and tested comprehensive restoration scripts that can recover individual files, directories, or entire system backups with verification capabilities.
+
+Built Monitoring and Verification Systems: You implemented backup verification scripts that ensure backup integrity and provide detailed logging for audit purposes.
+
+Why This Matters:
+
+System backup and restoration is critical for:
+
+Data Protection: Safeguarding against hardware failures, human errors, and security incidents
+Business Continuity: Ensuring minimal downtime during disaster recovery scenarios
+Compliance Requirements: Meeting regulatory requirements for data retention and recovery
+Peace of Mind: Knowing that critical data can be recovered quickly and reliably
+Real-World Applications:
+
+The skills you've developed in this lab are directly applicable to:
+
+Enterprise server administration
+Personal data protection strategies
+Cloud infrastructure management
+DevOps and system reliability engineering
+You now have the foundational knowledge to implement robust backup and restoration strategies in production environments, making you a valuable asset in any IT infrastructure role. Remember to regularly test your backup and restoration procedures to ensure they work when you need them most.
